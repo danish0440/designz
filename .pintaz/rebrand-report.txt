@@ -1,8 +1,7 @@
 rebrand designcraft -> DesignZ
 about credit inserted in: ['crates\\ui-egui\\src\\about.rs (fallback, after line 152)']
 launcher patches: []
-lines still naming ArtCraft/getartcraft/discord (non-doc): 7
-crates/engine/src/cmd/inspect.rs:13: "{} → {discord, website, appPage, github, issues} (ArtCraft Discord, website, DesignZ page and repository)", always, |_, _| Ok(crate::links::all())),
+lines still naming ArtCraft/getartcraft/discord (non-doc): 6
 crates/ui-egui/src/about.rs:2: //! ArtCraft mark, version, and community links (Discord first and largest), plus the other ArtCraft
 crates/ui-egui/src/about.rs:12: /// ArtCraft brand blue (from `assets/z-brand/mark.svg`).
 crates/ui-egui/src/about.rs:17: /// The ArtCraft mark outline (viewBox -10 -19.42 136.34 136.34), from `assets/z-brand/mark.svg`.
