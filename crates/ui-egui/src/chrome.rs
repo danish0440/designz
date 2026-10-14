@@ -125,7 +125,7 @@ pub fn app_bar(app: &mut DesignApp, ui: &mut egui::Ui) {
                         }
                         ui.add_space(8.0);
                         // Always one click away: this app's GitHub issues.
-                        if crate::about::discord_button(ui, "Discord", vec2(78.0, 22.0)) {
+                        if crate::about::discord_button(ui, "Help", vec2(78.0, 22.0)) {
                             let _ = app.run("help.discord", json!({}));
                         }
                         tools_start = ui.min_rect().min.x;
