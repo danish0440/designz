@@ -2,7 +2,7 @@
 
 use std::cell::Cell;
 
-use designcraft_doc::{AssetId, Content};
+use designz_doc::{AssetId, Content};
 
 use super::*;
 
@@ -54,8 +54,8 @@ fn package(frames: &[String]) -> Vec<u8> {
 }
 
 /// (asset, crop, transform) of each graphic, left to right.
-fn placements(d: &Document) -> Vec<(AssetId, [f64; 4], designcraft_geom::Affine)> {
-    let mut out: Vec<(f64, AssetId, [f64; 4], designcraft_geom::Affine)> = d.spreads[0]
+fn placements(d: &Document) -> Vec<(AssetId, [f64; 4], designz_geom::Affine)> {
+    let mut out: Vec<(f64, AssetId, [f64; 4], designz_geom::Affine)> = d.spreads[0]
         .items
         .iter()
         .filter_map(|i| match &i.content {

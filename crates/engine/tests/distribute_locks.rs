@@ -1,9 +1,9 @@
 //! Distribution preserves explicit item locks without changing reference/spacing calculations.
 use std::sync::Arc;
 
-use designcraft_doc::ItemId;
-use designcraft_engine::Session;
-use designcraft_geom::Affine;
+use designz_doc::ItemId;
+use designz_engine::Session;
+use designz_geom::Affine;
 use serde_json::{Value, json};
 
 const STARTS: [f64; 4] = [10.0, 70.0, 150.0, 310.0];

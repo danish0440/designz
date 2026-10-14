@@ -3,10 +3,10 @@
 //! All images and placed PDFs are tiny procedural fixtures.
 use std::sync::Arc;
 
-use designcraft_compose::Cache;
-use designcraft_doc::{Asset, AssetId, Content, Document, Graphic, Item, ItemId, Shape, SpreadRef};
-use designcraft_geom::{Affine, Rect, shapes};
-use designcraft_pdf::{BookletOptions, PdfOptions, Standard, export_booklet, export_pdf, export_pdf_with_report};
+use designz_compose::Cache;
+use designz_doc::{Asset, AssetId, Content, Document, Graphic, Item, ItemId, Shape, SpreadRef};
+use designz_geom::{Affine, Rect, shapes};
+use designz_pdf::{BookletOptions, PdfOptions, Standard, export_booklet, export_pdf, export_pdf_with_report};
 
 use crate::image_fixtures as fixtures;
 

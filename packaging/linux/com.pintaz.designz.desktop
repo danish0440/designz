@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=DesignZ
+GenericName=Page Layout
+Comment=Lay out magazines, books and print documents
+Exec=designz %F
+TryExec=designz
+Icon=com.pintaz.designz
+Terminal=false
+StartupNotify=true
+StartupWMClass=com.pintaz.designz
+Categories=Graphics;Publishing;
+Keywords=layout;page;desktop publishing;dtp;magazine;book;indesign;idml;typesetting;

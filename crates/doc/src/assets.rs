@@ -274,7 +274,7 @@ impl Document {
 mod tests {
     use super::*;
     use crate::{Graphic, ItemId, LayerId, Shape, StoryId};
-    use designcraft_geom::{Affine, Rect, shapes};
+    use designz_geom::{Affine, Rect, shapes};
 
     fn asset(id: u64, data: &[u8]) -> Asset {
         Asset { id: AssetId(id), name: "p.png".into(), mime: "image/png".into(), link: None, data: Arc::new(data.to_vec()), pixels: None, page: 0 }

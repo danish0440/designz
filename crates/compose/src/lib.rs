@@ -1,4 +1,4 @@
-//! DesignCraft text composition.
+//! DesignZ text composition.
 //!
 //! [`compose_story`] lays a story out through its chain of threaded frames:
 //! style resolution → shaping ([`shape`]) → line breaking ([`breaker`]: the paragraph composer is
@@ -28,12 +28,12 @@ use std::ops::Range;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
-use designcraft_doc::{
+use designz_doc::{
     Align, Composer, Document, FirstBaseline, GridAlign, ItemId, ParaProps, SpanColumns, StartParagraph, Story, StoryId, TabAlign, TextFrameOptions,
     VerticalJustification, WrapMode, story,
 };
-use designcraft_fonts::{FontDb, ScopedFonts};
-use designcraft_geom::{Point, Rect};
+use designz_fonts::{FontDb, ScopedFonts};
+use designz_geom::{Point, Rect};
 
 use crate::breaker::{Break, Spacing};
 pub use crate::cache::Cache;
@@ -79,7 +79,7 @@ pub struct RunStyle {
     /// Extra points between warichu baselines. 0 keeps baselines one small em apart. A negative
     /// value tightens that em, down to a shared baseline.
     pub warichu_line_spacing: f64,
-    pub warichu_align: designcraft_doc::cjk::WarichuAlignment,
+    pub warichu_align: designz_doc::cjk::WarichuAlignment,
     pub warichu_chars_before: u32,
     pub warichu_chars_after: u32,
 }
@@ -115,7 +115,7 @@ impl RunStyle {
 /// A positioned glyph. `x` is absolute in frame inner space; `y` is relative to the line baseline.
 #[derive(Clone, Debug)]
 pub struct PlacedGlyph {
-    pub face: designcraft_fonts::FaceRef,
+    pub face: designz_fonts::FaceRef,
     pub gid: u32,
     pub x: f64,
     pub y: f64,
@@ -137,17 +137,17 @@ pub struct PlacedGlyph {
 
 impl PlacedGlyph {
     /// In a vertical frame, the turn that sets this glyph upright, applied after drawing it at `x`
-    /// on `baseline`: it hangs from its vertical origin ([`designcraft_fonts::FontFace::v_origin`],
+    /// on `baseline`: it hangs from its vertical origin ([`designz_fonts::FontFace::v_origin`],
     /// centred across) at `x` on the line's centre, the middle of the font's em box; a tate-chu-yoko
     /// group sits across that centre.
-    pub fn vertical_xf(&self, baseline: f64) -> Option<designcraft_geom::Affine> {
+    pub fn vertical_xf(&self, baseline: f64) -> Option<designz_geom::Affine> {
         let turn = -std::f64::consts::FRAC_PI_2;
         // The em box centre above the baseline, in ems.
         let (top, bottom) = self.face.em_box();
         let centre = (top + bottom) / 2.0 / self.face.units_per_em();
         if let Some([along, across, em]) = self.tcy {
             let c = Point::new(self.x + along, baseline + self.y - em * centre);
-            return Some(designcraft_geom::Affine::rotate_about(turn, c) * designcraft_geom::Affine::translate((c.x + across - self.x, 0.0)));
+            return Some(designz_geom::Affine::rotate_about(turn, c) * designz_geom::Affine::translate((c.x + across - self.x, 0.0)));
         }
         if !self.upright {
             return None;
@@ -158,7 +158,7 @@ impl PlacedGlyph {
         let origin = self.face.v_origin(self.gid) * self.sy;
         let mid = centre * self.face.units_per_em() * self.sy;
         let c = Point::new(self.x + (origin - mid + half) / 2.0, baseline + self.y + (half - mid - origin) / 2.0);
-        Some(designcraft_geom::Affine::rotate_about(turn, c))
+        Some(designz_geom::Affine::rotate_about(turn, c))
     }
 }
 
@@ -333,13 +333,13 @@ impl FrameSpec {
         // Primary frames inherit the document limit (216), beyond the interactive frame editor's 40.
         let n = self.opts.columns.clamp(1, 216);
         match self.opts.columns_kind {
-            designcraft_doc::ColumnsKind::FixedWidth if self.opts.column_width > 0.0 => (0..n)
+            designz_doc::ColumnsKind::FixedWidth if self.opts.column_width > 0.0 => (0..n)
                 .map(|i| {
                     let x = a.x0 + i as f64 * (self.opts.column_width + self.opts.gutter);
                     Rect::new(x, a.y0, x + self.opts.column_width, a.y1)
                 })
                 .collect(),
-            _ => designcraft_doc::page::column_rects(a, n, self.opts.gutter),
+            _ => designz_doc::page::column_rects(a, n, self.opts.gutter),
         }
     }
 }
@@ -389,13 +389,13 @@ pub fn frame_specs(doc: &Document, sid: StoryId) -> Vec<FrameSpec> {
             }
         }
         let (page_name, page, left_page) = match (loc.spread, spread) {
-            (designcraft_doc::SpreadRef::Doc(si), Some(sp)) => {
+            (designz_doc::SpreadRef::Doc(si), Some(sp)) => {
                 let c = item.bounds().center();
                 let pi = sp.page_at_x(c.x).unwrap_or(0);
                 let abs = doc.first_page_of_spread(si) + pi;
-                (Some(doc.page_name(abs)), Some(abs), sp.pages.get(pi).is_some_and(|p| p.side == designcraft_doc::PageSide::Left))
+                (Some(doc.page_name(abs)), Some(abs), sp.pages.get(pi).is_some_and(|p| p.side == designz_doc::PageSide::Left))
             }
-            (designcraft_doc::SpreadRef::Parent(pi), Some(sp)) => {
+            (designz_doc::SpreadRef::Parent(pi), Some(sp)) => {
                 let prefix = sp.parent.as_ref().map(|p| p.prefix.clone()).unwrap_or_else(|| "A".into());
                 let _ = pi;
                 (Some(prefix), None, false)
@@ -418,7 +418,7 @@ pub fn frame_specs(doc: &Document, sid: StoryId) -> Vec<FrameSpec> {
         // Type on a path: one line as long as the path (from the start offset).
         let (area, opts) = match &tf.options.path {
             Some(pt) => {
-                let len = designcraft_geom::warp::PathWarp::new(&item.path.to_bezpath(), false).length();
+                let len = designz_geom::warp::PathWarp::new(&item.path.to_bezpath(), false).length();
                 let size = st
                     .paras
                     .first()
@@ -428,7 +428,7 @@ pub fn frame_specs(doc: &Document, sid: StoryId) -> Vec<FrameSpec> {
                 let opts = TextFrameOptions {
                     columns: 1,
                     inset: [0.0; 4],
-                    first_baseline: designcraft_doc::FirstBaseline::Ascent,
+                    first_baseline: designz_doc::FirstBaseline::Ascent,
                     path: None,
                     ..tf.options.clone()
                 };
@@ -440,7 +440,7 @@ pub fn frame_specs(doc: &Document, sid: StoryId) -> Vec<FrameSpec> {
         // Vertical type: composed in the turned box; wraps and page rects turned with it.
         let vertical = doc.frame_vertical(item);
         let (area, exclusions, grid, page_rect) = if vertical {
-            let v = designcraft_doc::vertical_text_xf(area).inverse();
+            let v = designz_doc::vertical_text_xf(area).inverse();
             let ex = exclusions.into_iter().map(|e| Exclusion { rect: v.transform_rect_bbox(e.rect), ..e }).collect();
             let pr = page_rect.map(|(a, b)| (v.transform_rect_bbox(a), v.transform_rect_bbox(b)));
             (Rect::new(0.0, 0.0, area.height(), area.width()), ex, None, pr)
@@ -488,7 +488,7 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
         .iter()
         .map(|f| {
             let mut columns = f.columns();
-            if story.direction == designcraft_doc::TextDirection::RightToLeft && !f.vertical {
+            if story.direction == designz_doc::TextDirection::RightToLeft && !f.vertical {
                 columns.reverse();
             }
             columns
@@ -525,7 +525,7 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
             .zip(&para_ranges)
             .map(|(p, r)| {
                 let (pp, _) = doc.styles.resolve_para(p);
-                if pp.list_type != designcraft_doc::ListType::Numbers || pp.list_name.is_empty() || r.is_empty() {
+                if pp.list_type != designz_doc::ListType::Numbers || pp.list_name.is_empty() || r.is_empty() {
                     return None;
                 }
                 let c = counters.entry(pp.list_name.clone()).or_insert_with(|| doc.list_start(story.id, &pp.list_name));
@@ -642,20 +642,20 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
         };
         if !story.endnotes.is_empty() {
             // Endnote reference numbers continue through the document.
-            let first = doc.endnote_start(story.id) + story.text[..prange.start].matches(designcraft_doc::ENDNOTE_REF).count() as u32;
-            for (k, (i, _)) in story.text[prange.clone()].match_indices(designcraft_doc::ENDNOTE_REF).enumerate() {
+            let first = doc.endnote_start(story.id) + story.text[..prange.start].matches(designz_doc::ENDNOTE_REF).count() as u32;
+            for (k, (i, _)) in story.text[prange.clone()].match_indices(designz_doc::ENDNOTE_REF).enumerate() {
                 sub.notes.insert(prange.start + i, doc.endnote_options.label(first + k as u32));
             }
         }
         if !story.objects.is_empty() {
-            let before = story.text[..prange.start].matches(designcraft_doc::OBJECT_MARK).count();
-            for (k, (i, _)) in story.text[prange.clone()].match_indices(designcraft_doc::OBJECT_MARK).enumerate() {
+            let before = story.text[..prange.start].matches(designz_doc::OBJECT_MARK).count();
+            for (k, (i, _)) in story.text[prange.clone()].match_indices(designz_doc::OBJECT_MARK).enumerate() {
                 let Some(o) = story.objects.get(before + k) else { continue };
                 let (w, h) = o.size();
                 let (y_offset, space, custom) = match &o.position {
-                    designcraft_doc::AnchorPosition::Inline { y_offset } => (Some(*y_offset), 0.0, false),
-                    designcraft_doc::AnchorPosition::AboveLine { space_before, space_after, .. } => (None, space_before + space_after, false),
-                    designcraft_doc::AnchorPosition::Custom { .. } => (Some(0.0), 0.0, true),
+                    designz_doc::AnchorPosition::Inline { y_offset } => (Some(*y_offset), 0.0, false),
+                    designz_doc::AnchorPosition::AboveLine { space_before, space_after, .. } => (None, space_before + space_after, false),
+                    designz_doc::AnchorPosition::Custom { .. } => (Some(0.0), 0.0, true),
                 };
                 sub.objects.insert(prange.start + i, shape::ObjectSpec { index: before + k, w, h, y_offset, space, custom });
             }
@@ -687,8 +687,8 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
         );
         // Drop cap: the size and indent come from the text beside it (`base_*` when there's none).
         let base_leading = match base_chars.leading {
-            designcraft_doc::Leading::Auto => base_chars.size * pp.auto_leading,
-            designcraft_doc::Leading::Points(v) => v,
+            designz_doc::Leading::Auto => base_chars.size * pp.auto_leading,
+            designz_doc::Leading::Points(v) => v,
         };
         let base_cap = {
             let face = db.face(&base_chars.font_family, &base_chars.font_style);
@@ -696,9 +696,9 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
         };
         let drop_grid = cur_frame.and_then(|f| f.grid).filter(|_| pp.grid_align == GridAlign::AllLines).map(|g| g.1);
         // Align Left Edge (left-to-right paragraphs).
-        let drop_align = pp.drop_cap_align_left && pp.direction == designcraft_doc::TextDirection::LeftToRight;
+        let drop_align = pp.drop_cap_align_left && pp.direction == designz_doc::TextDirection::LeftToRight;
         // Tab stops for the drop cap, with the start-side indent (the right one, right to left).
-        let drop_tabs = (&pp.tabs[..], if pp.direction == designcraft_doc::TextDirection::RightToLeft { pp.right_indent } else { pp.left_indent });
+        let drop_tabs = (&pp.tabs[..], if pp.direction == designz_doc::TextDirection::RightToLeft { pp.right_indent } else { pp.left_indent });
         if !pp.nested_line_styles.is_empty() && cur.fi < frames.len() {
             // Nested line styles: find where the first lines end in this column, restyle them, and
             // look again (the style changes the widths) until the lines settle.
@@ -742,7 +742,7 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
                         break;
                     }
                     let end = line + nl.lines as usize;
-                    if !nl.style.is_empty() && nl.style != designcraft_doc::NO_CHAR_STYLE {
+                    if !nl.style.is_empty() && nl.style != designz_doc::NO_CHAR_STYLE {
                         want.push((byte_at(line)..byte_at(end).max(byte_at(line)), nl.style.clone()));
                     }
                     line = end;
@@ -775,26 +775,26 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
                 .map_or((base_chars.fill.clone(), base_chars.fill_tint), |s| (s.fill.clone(), s.fill_tint))
         };
         let (above, below) = (text_color(sp.glyphs.iter().find(|g| g.len > 0)), text_color(sp.glyphs.iter().rev().find(|g| g.len > 0)));
-        let rule_color = |r: &designcraft_doc::Rule, text: &(String, f32)| {
-            if r.color == designcraft_doc::TEXT_COLOR { text.clone() } else { (r.color.clone(), r.tint) }
+        let rule_color = |r: &designz_doc::Rule, text: &(String, f32)| {
+            if r.color == designz_doc::TEXT_COLOR { text.clone() } else { (r.color.clone(), r.tint) }
         };
         let drop_cap = split_drop_cap(db, &mut sp.glyphs, drop_end, pp.drop_cap_lines, base_leading, base_cap, drop_grid, drop_align, drop_tabs);
         // List labels take the default super/subscript settings.
         let label_env = shape::TypeEnv { adv: Default::default(), ..env };
         let list_label = match pp.list_type {
             // An empty paragraph has no bullet or number, and the numbering carries on past it.
-            designcraft_doc::ListType::Numbers | designcraft_doc::ListType::Bullets if prange.is_empty() => None,
-            designcraft_doc::ListType::Numbers if !pp.list_name.is_empty() => {
+            designz_doc::ListType::Numbers | designz_doc::ListType::Bullets if prange.is_empty() => None,
+            designz_doc::ListType::Numbers if !pp.list_name.is_empty() => {
                 // A named list: carries on past other paragraphs (and from earlier stories).
                 let n = named_numbers.get(pi).copied().flatten().unwrap_or(1);
                 Some(pp.number_label(n))
             }
-            designcraft_doc::ListType::Numbers => {
+            designz_doc::ListType::Numbers => {
                 list_counter = pp.start_at.map_or(list_counter.saturating_add(1), |s| s.max(1));
                 Some(pp.number_label(list_counter))
             }
-            designcraft_doc::ListType::Bullets => Some(pp.bullet_label()),
-            designcraft_doc::ListType::None => {
+            designz_doc::ListType::Bullets => Some(pp.bullet_label()),
+            designz_doc::ListType::None => {
                 list_counter = 0;
                 None
             }
@@ -814,7 +814,7 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
         let bidi_text = bidi::paragraph_text(&mut glyphs, &story.text);
         let bidi_info = unicode_bidi::BidiInfo::new(
             &bidi_text,
-            Some(if pp.direction == designcraft_doc::TextDirection::RightToLeft { unicode_bidi::Level::rtl() } else { unicode_bidi::Level::ltr() }),
+            Some(if pp.direction == designz_doc::TextDirection::RightToLeft { unicode_bidi::Level::rtl() } else { unicode_bidi::Level::ltr() }),
         );
         bidi::resolve_mirroring(&mut glyphs, &bidi_info);
         apply_desired_spacing(&mut glyphs, &pp);
@@ -919,7 +919,7 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
         let mut col_first_line = 0usize;
         let has_tabs = glyphs.iter().any(|g| g.ch == '\t');
         let mut first_line_rect: Option<(usize, f64, f64, f64)> = None; // frame, baseline, ascent, x-span
-        let rtl = pp.direction == designcraft_doc::TextDirection::RightToLeft;
+        let rtl = pp.direction == designz_doc::TextDirection::RightToLeft;
         loop {
             if cur.fi >= frames.len() {
                 if let Some(j) = trial_failed(&mut trial, &mut limits, balance_runs < balance_budget) {
@@ -1109,7 +1109,7 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
                 let end_x = end_x + warichu::place(&styles_tab, &mut placed);
                 // The spaces the break trimmed off the end follow the line undrawn, so the caret
                 // and the selection reach them; alignment and justification ignore them.
-                if pp.direction != designcraft_doc::TextDirection::RightToLeft && !placed.iter().any(|g| g.rtl) {
+                if pp.direction != designz_doc::TextDirection::RightToLeft && !placed.iter().any(|g| g.rtl) {
                     let mut x = end_x;
                     for g in glyphs.get(e..(g0 + b.next).min(glyphs.len())).unwrap_or(&[]).iter().filter(|g| g.is_space()) {
                         placed.push(PlacedGlyph { visible: false, ..place(g, x) });
@@ -1167,7 +1167,7 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
                 if !sub_objects.is_empty() {
                     let ft = &mut out.frames[cur.fi];
                     let li = ft.lines.len() - 1;
-                    let text_ascent = line_glyphs.iter().filter(|g| g.ch != designcraft_doc::OBJECT_MARK).map(|g| g.ascent).fold(0.0, f64::max);
+                    let text_ascent = line_glyphs.iter().filter(|g| g.ch != designz_doc::OBJECT_MARK).map(|g| g.ascent).fold(0.0, f64::max);
                     let text_ascent = if text_ascent > 0.0 { text_ascent } else { base_chars.size * 0.75 };
                     for g in ft.lines[li].glyphs.iter().filter(|g| g.len > 0) {
                         if let Some(o) = sub_objects.get(&g.byte) {
@@ -1323,16 +1323,16 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
                 let Some(obj) = story.objects.get(o.index) else { continue };
                 let (w, h) = o.size;
                 o.origin = match &obj.position {
-                    designcraft_doc::AnchorPosition::Inline { y_offset } => Point::new(o.x, l.baseline - y_offset - h),
-                    designcraft_doc::AnchorPosition::AboveLine { align, space_after, .. } => {
+                    designz_doc::AnchorPosition::Inline { y_offset } => Point::new(o.x, l.baseline - y_offset - h),
+                    designz_doc::AnchorPosition::AboveLine { align, space_after, .. } => {
                         let x = match align {
-                            designcraft_doc::anchored::AnchorAlign::Left => l.x0,
-                            designcraft_doc::anchored::AnchorAlign::Center => (l.x0 + l.x1 - w) / 2.0,
-                            designcraft_doc::anchored::AnchorAlign::Right => l.x1 - w,
+                            designz_doc::anchored::AnchorAlign::Left => l.x0,
+                            designz_doc::anchored::AnchorAlign::Center => (l.x0 + l.x1 - w) / 2.0,
+                            designz_doc::anchored::AnchorAlign::Right => l.x1 - w,
                         };
                         Point::new(x, l.baseline - o.text_ascent - space_after - h)
                     }
-                    designcraft_doc::AnchorPosition::Custom {
+                    designz_doc::AnchorPosition::Custom {
                         x_relative,
                         y_relative,
                         x_offset,
@@ -1341,7 +1341,7 @@ fn compose_with_db(doc: &Document, story: &Story, frames: &[FrameSpec], opts: &C
                         ref_point,
                         keep_within_column,
                     } => {
-                        use designcraft_doc::anchored::AnchorRelative as R;
+                        use designz_doc::anchored::AnchorRelative as R;
                         let col = ft.columns.get(l.column as usize).copied().unwrap_or(f.area);
                         let area = |r: R| match r {
                             R::Anchor => None,
@@ -1578,7 +1578,7 @@ fn apply_desired_spacing(glyphs: &mut [Glyph], pp: &ParaProps) {
     for i in 0..glyphs.len() {
         let (left, right) = glyphs.split_at_mut(i + 1);
         let Some(g) = left.last_mut() else { continue };
-        if pp.kinsoku_hang != designcraft_doc::cjk::KinsokuHang::None && pp.kinsoku.as_ref().is_some_and(|k| k.hanging.contains(g.ch)) {
+        if pp.kinsoku_hang != designz_doc::cjk::KinsokuHang::None && pp.kinsoku.as_ref().is_some_and(|k| k.hanging.contains(g.ch)) {
             g.cjk_hang = g.adv;
         }
         g.ideographic_space_elastic = pp.treat_ideographic_space_as_space;
@@ -2129,8 +2129,8 @@ struct Tops {
     em: f64,
 }
 
-/// The em box top above the baseline at `size` ([`designcraft_fonts::FontFace::em_box`]).
-fn em_box_top(face: &designcraft_fonts::FontFace, size: f64) -> f64 {
+/// The em box top above the baseline at `size` ([`designz_fonts::FontFace::em_box`]).
+fn em_box_top(face: &designz_fonts::FontFace, size: f64) -> f64 {
     let em = Some(face.em_box().0 / face.upem).filter(|e| e.is_finite()).unwrap_or(0.88);
     em * size
 }
@@ -2143,7 +2143,7 @@ fn cjk_em_box(g: &Glyph) -> (f64, f64) {
     (top, top + height)
 }
 fn cjk_alignment_shift(g: &Glyph, reference: &Glyph) -> f64 {
-    use designcraft_doc::cjk::CharacterAlignment as A;
+    use designz_doc::cjk::CharacterAlignment as A;
     let (t, b) = cjk_em_box(g);
     let (rt, rb) = cjk_em_box(reference);
     match g.character_alignment {
@@ -2156,7 +2156,7 @@ fn cjk_alignment_shift(g: &Glyph, reference: &Glyph) -> f64 {
     }
 }
 fn cjk_line_reference(line: &[Glyph]) -> f64 {
-    use designcraft_doc::cjk::LeadingModel as L;
+    use designz_doc::cjk::LeadingModel as L;
     let Some(g) = line.iter().max_by(|a, b| a.size.total_cmp(&b.size)) else { return 0.0 };
     let (top, bottom) = cjk_em_box(g);
     match g.leading_model {
@@ -2174,7 +2174,7 @@ fn line_metrics(
     base_leading: f64,
     base_size: f64,
     db: &ScopedFonts<'_>,
-    base: &designcraft_doc::CharProps,
+    base: &designz_doc::CharProps,
 ) -> (f64, Tops, f64, f64) {
     let src: &[Glyph] = if line.is_empty() { all.get(s..(s + 1).min(all.len())).unwrap_or(&[]) } else { line };
     let face = || db.face(&base.font_family, &base.font_style);
@@ -2369,7 +2369,7 @@ pub fn hj_severity(ratio: f64, min: f64, max: f64) -> u8 {
 ///
 /// The left indent is a left stop of its own: in a hanging indent, the tab after a bullet or
 /// number reaches it unless an explicit stop comes first.
-fn tab_advance<'a>(tabs: &'a [designcraft_doc::TabStop], left_indent: f64, abs: f64, after: &[Glyph]) -> (f64, Option<&'a designcraft_doc::TabStop>) {
+fn tab_advance<'a>(tabs: &'a [designz_doc::TabStop], left_indent: f64, abs: f64, after: &[Glyph]) -> (f64, Option<&'a designz_doc::TabStop>) {
     let indent_ahead = left_indent > abs + 0.01;
     let stop = tabs.iter().find(|t| t.position > abs + 0.01).filter(|t| !indent_ahead || t.position <= left_indent);
     let (pos, align) = match stop {
@@ -2464,13 +2464,13 @@ fn layout_line(
     let has_tab = line.iter().any(|g| g.ch == '\t' || g.ch == story::RIGHT_INDENT_TAB);
     // Optical margin alignment: the measure grows by the hang of the edge glyphs.
     let (mut x0, mut measure) = (x0, measure);
-    if (sp.optical || pp.kinsoku_hang != designcraft_doc::cjk::KinsokuHang::None) && !has_tab {
+    if (sp.optical || pp.kinsoku_hang != designz_doc::cjk::KinsokuHang::None) && !has_tab {
         let first = line.iter().find(|g| g.adv > 0.0 && !g.is_space());
         let lastg = line.iter().rev().find(|g| g.adv > 0.0 && !g.is_space());
         let hl = if sp.optical { first.map_or(0.0, |g| breaker::hang(g.ch).0 * g.adv) } else { 0.0 };
         let optical_right = if sp.optical { lastg.map_or(0.0, |g| breaker::hang(g.ch).1 * g.adv) } else { 0.0 };
         let cjk_right = lastg.map_or(0.0, |g| g.cjk_hang);
-        let cjk_right = if pp.kinsoku_hang == designcraft_doc::cjk::KinsokuHang::Regular {
+        let cjk_right = if pp.kinsoku_hang == designz_doc::cjk::KinsokuHang::Regular {
             cjk_right.min((line.iter().map(|g| g.adv).sum::<f64>() - measure).max(0.0))
         } else {
             cjk_right
@@ -2630,7 +2630,7 @@ fn layout_line(
     for (i, l) in kashidas {
         let first = (0..=i).rev().take_while(|&j| line[j].byte == line[i].byte).last().unwrap_or(i);
         let (g, at) = (&line[i], out[first].x - line[first].dx - l);
-        let gid = designcraft_fonts::first_glyph(&g.face, &['\u{0640}']);
+        let gid = designz_fonts::first_glyph(&g.face, &['\u{0640}']);
         let w = g.face.advance(gid) * g.sx;
         if gid == 0 || w <= 0.0 {
             continue;
@@ -2730,7 +2730,7 @@ fn tab_leader(tab: &Glyph, leader: &str, x: f64, w: f64, origin: f64, out: &mut 
     let glyphs: Vec<(u32, f64)> = leader
         .chars()
         .map(|c| {
-            let gid = designcraft_fonts::first_glyph(&tab.face, &[c]);
+            let gid = designz_fonts::first_glyph(&tab.face, &[c]);
             (gid, tab.face.advance(gid) * tab.sx)
         })
         .collect();
@@ -2921,7 +2921,7 @@ fn split_drop_cap(
     base_cap: f64,
     grid: Option<f64>,
     align_left: bool,
-    tabs: (&[designcraft_doc::TabStop], f64),
+    tabs: (&[designz_doc::TabStop], f64),
 ) -> Option<DropCap> {
     let n = glyphs.iter().take_while(|g| g.byte < end).count();
     if n == 0 {
@@ -2959,7 +2959,7 @@ fn split_drop_cap(
     }
     let lsb = match dc.first() {
         Some(g) if align_left => {
-            let ink = designcraft_geom::Shape::bounding_box(&*db.outline(g.face.get(), g.gid));
+            let ink = designz_geom::Shape::bounding_box(&*db.outline(g.face.get(), g.gid));
             let lsb = g.dx + ink.x0 * g.sx;
             if ink.width() > 0.0 && lsb.is_finite() { lsb } else { 0.0 }
         }
@@ -3012,14 +3012,14 @@ fn prepend_label(
     glyphs: &mut Vec<Glyph>,
     label: &str,
     at: usize,
-    base: &designcraft_doc::CharProps,
+    base: &designz_doc::CharProps,
     env: shape::TypeEnv,
     table: &mut StyleTable<'_>,
 ) -> usize {
     // Shape the label as a tiny standalone story so it uses the paragraph's base character style.
     let mut tmp = Story::new(StoryId(0));
     tmp.insert(0, label);
-    let styles = designcraft_doc::Styles::default();
+    let styles = designz_doc::Styles::default();
     let shaped = shape::shape_para(db, &styles, &tmp, 0, 0..label.len(), base, env, &SubstCtx::default(), table, &[], &[], &[], (0, ""));
     let mut pre: Vec<Glyph> = shaped
         .glyphs
@@ -3040,23 +3040,23 @@ type LimitsKey = (usize, usize, usize, bool);
 
 /// Mark glyphs after which a hyphen may be inserted (dictionary/pattern points within the
 /// paragraph's limits; words with discretionary hyphens break only there).
-/// Whether a language (a name or locale code, see [`designcraft_doc::language_tag`]) uses the
+/// Whether a language (a name or locale code, see [`designz_doc::language_tag`]) uses the
 /// English hyphenation and spelling dictionaries.
 pub fn is_english(language: &str) -> bool {
     // InDesign's English names first: composition asks this for every run.
-    language.starts_with("English") || designcraft_doc::language_tag(language).is_some_and(|t| designcraft_doc::language_subtag(t) == "en")
+    language.starts_with("English") || designz_doc::language_tag(language).is_some_and(|t| designz_doc::language_subtag(t) == "en")
 }
 
 /// Byte ranges of paragraph `prange` set in a language other than English, with the hyphenator
 /// for that language (None: not hyphenated).
 fn foreign_ranges(
     doc: &Document,
-    story: &designcraft_doc::Story,
+    story: &designz_doc::Story,
     prange: Range<usize>,
-    base: &designcraft_doc::CharProps,
+    base: &designz_doc::CharProps,
 ) -> Vec<(Range<usize>, Option<hyphen::Lang>)> {
     if is_english(&base.language)
-        && story.runs().all(|(_, f)| f.over.language.as_deref().is_none_or(is_english) && f.style == designcraft_doc::story::NO_CHAR_STYLE)
+        && story.runs().all(|(_, f)| f.over.language.as_deref().is_none_or(is_english) && f.style == designz_doc::story::NO_CHAR_STYLE)
     {
         return vec![];
     }
@@ -3582,7 +3582,7 @@ mod tests;
 /// Type on a path: between the composed line (x along it, y as composed) and the frame's path
 /// space, as `path_glyphs` places the glyphs.
 pub struct PathTextMap {
-    warp: designcraft_geom::warp::PathWarp,
+    warp: designz_geom::warp::PathWarp,
     start: f64,
     /// Line y that sits on the path (the alignment), and the line's baseline.
     on: f64,
@@ -3591,16 +3591,16 @@ pub struct PathTextMap {
 
 impl PathTextMap {
     /// The map of `item` (type on a path) for its composed frame `ft`; None for other frames.
-    pub fn new(item: &designcraft_doc::Item, ft: &FrameText) -> Option<Self> {
+    pub fn new(item: &designz_doc::Item, ft: &FrameText) -> Option<Self> {
         let pt = item.text_frame()?.options.path.as_ref()?;
-        let warp = designcraft_geom::warp::PathWarp::new(&item.path.to_bezpath(), pt.flip);
+        let warp = designz_geom::warp::PathWarp::new(&item.path.to_bezpath(), pt.flip);
         let (on, baseline) = match ft.lines.first() {
             Some(l) => (
                 match pt.align {
-                    designcraft_doc::PathAlign::Baseline => l.baseline,
-                    designcraft_doc::PathAlign::Ascender => l.baseline - l.ascent,
-                    designcraft_doc::PathAlign::Descender => l.baseline + l.descent,
-                    designcraft_doc::PathAlign::Center => l.baseline - (l.ascent - l.descent) / 2.0,
+                    designz_doc::PathAlign::Baseline => l.baseline,
+                    designz_doc::PathAlign::Ascender => l.baseline - l.ascent,
+                    designz_doc::PathAlign::Descender => l.baseline + l.descent,
+                    designz_doc::PathAlign::Center => l.baseline - (l.ascent - l.descent) / 2.0,
                 },
                 l.baseline,
             ),
@@ -3612,7 +3612,7 @@ impl PathTextMap {
     /// A point of the composed line, on the path: along it by x, across it by y.
     pub fn to_path(&self, p: Point) -> Point {
         match self.warp.at(self.start + p.x) {
-            Some((q, a)) => q + designcraft_geom::Vec2::new(-a.sin(), a.cos()) * (p.y - self.on),
+            Some((q, a)) => q + designz_geom::Vec2::new(-a.sin(), a.cos()) * (p.y - self.on),
             None => p,
         }
     }
@@ -3629,19 +3629,19 @@ impl PathTextMap {
 pub fn path_glyphs(
     cs: &ComposedStory,
     ft: &FrameText,
-    path: &designcraft_geom::BezPath,
-    pt: &designcraft_doc::PathType,
-) -> Vec<(u32, designcraft_geom::BezPath)> {
-    let db = designcraft_fonts::FontDb::global();
-    let warp = designcraft_geom::warp::PathWarp::new(path, pt.flip);
-    let mut runs: Vec<(u32, designcraft_geom::BezPath)> = Vec::new();
+    path: &designz_geom::BezPath,
+    pt: &designz_doc::PathType,
+) -> Vec<(u32, designz_geom::BezPath)> {
+    let db = designz_fonts::FontDb::global();
+    let warp = designz_geom::warp::PathWarp::new(path, pt.flip);
+    let mut runs: Vec<(u32, designz_geom::BezPath)> = Vec::new();
     for l in &ft.lines {
         // The part of the type that sits on the path.
         let on = match pt.align {
-            designcraft_doc::PathAlign::Baseline => l.baseline,
-            designcraft_doc::PathAlign::Ascender => l.baseline - l.ascent,
-            designcraft_doc::PathAlign::Descender => l.baseline + l.descent,
-            designcraft_doc::PathAlign::Center => l.baseline - (l.ascent - l.descent) / 2.0,
+            designz_doc::PathAlign::Baseline => l.baseline,
+            designz_doc::PathAlign::Ascender => l.baseline - l.ascent,
+            designz_doc::PathAlign::Descender => l.baseline + l.descent,
+            designz_doc::PathAlign::Center => l.baseline - (l.ascent - l.descent) / 2.0,
         };
         for g in l.glyphs.iter().filter(|g| g.visible) {
             let outline = db.outline(&g.face, g.gid);
@@ -3651,20 +3651,20 @@ pub fn path_glyphs(
             let style = &cs.styles[g.style as usize];
             let mid = g.x + g.adv / 2.0;
             let Some((p, a)) = warp.at(pt.start + mid) else { continue };
-            let place = designcraft_geom::Affine::translate(p.to_vec2())
-                * designcraft_geom::Affine::rotate(a)
-                * designcraft_geom::Affine::translate((-mid, -on));
+            let place = designz_geom::Affine::translate(p.to_vec2())
+                * designz_geom::Affine::rotate(a)
+                * designz_geom::Affine::translate((-mid, -on));
             let skew = if style.skew != 0.0 {
-                designcraft_geom::Affine::new([1.0, 0.0, -style.skew.to_radians().tan(), 1.0, 0.0, 0.0])
+                designz_geom::Affine::new([1.0, 0.0, -style.skew.to_radians().tan(), 1.0, 0.0, 0.0])
             } else {
-                designcraft_geom::Affine::IDENTITY
+                designz_geom::Affine::IDENTITY
             };
             let m =
-                place * designcraft_geom::Affine::translate((g.x, l.baseline + g.y)) * skew * designcraft_geom::Affine::scale_non_uniform(g.sx, g.sy);
+                place * designz_geom::Affine::translate((g.x, l.baseline + g.y)) * skew * designz_geom::Affine::scale_non_uniform(g.sx, g.sy);
             let k = match runs.iter().position(|r| r.0 == g.style) {
                 Some(k) => k,
                 None => {
-                    runs.push((g.style, designcraft_geom::BezPath::new()));
+                    runs.push((g.style, designz_geom::BezPath::new()));
                     runs.len() - 1
                 }
             };
@@ -3679,7 +3679,7 @@ pub fn path_glyphs(
 mod column_allocation_safety_tests {
     use super::*;
 
-    fn frame(kind: designcraft_doc::ColumnsKind) -> FrameSpec {
+    fn frame(kind: designz_doc::ColumnsKind) -> FrameSpec {
         FrameSpec {
             id: ItemId(1),
             area: Rect::new(0., 0., 300., 100.),
@@ -3693,7 +3693,7 @@ mod column_allocation_safety_tests {
             page_rect: None,
         }
     }
-    fn check(kind: designcraft_doc::ColumnsKind) {
+    fn check(kind: designz_doc::ColumnsKind) {
         let mut f = frame(kind);
         // Fail safely at a small boundary before exercising hostile native options.
         assert_eq!(f.columns().len(), 216);
@@ -3702,7 +3702,7 @@ mod column_allocation_safety_tests {
         f.opts.columns = 0;
         assert_eq!(f.columns().len(), 1);
         f.opts.columns = 2;
-        let expected = if kind == designcraft_doc::ColumnsKind::FixedWidth {
+        let expected = if kind == designz_doc::ColumnsKind::FixedWidth {
             vec![Rect::new(0., 0., 20., 100.), Rect::new(32., 0., 52., 100.)]
         } else {
             vec![Rect::new(0., 0., 144., 100.), Rect::new(156., 0., 300., 100.)]
@@ -3711,10 +3711,10 @@ mod column_allocation_safety_tests {
     }
     #[test]
     fn column_allocation_caps_equal_width_frame_count() {
-        check(designcraft_doc::ColumnsKind::FixedNumber);
+        check(designz_doc::ColumnsKind::FixedNumber);
     }
     #[test]
     fn column_allocation_caps_fixed_width_frame_count() {
-        check(designcraft_doc::ColumnsKind::FixedWidth);
+        check(designz_doc::ColumnsKind::FixedWidth);
     }
 }

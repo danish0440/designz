@@ -23,7 +23,7 @@ fn thumb(app: &mut DesignApp, ctx: &egui::Context, abs: usize, h: f32) -> Option
     }
     let page = st.doc.page(abs)?;
     let scale = (h as f64 * ctx.pixels_per_point() as f64) / page.height;
-    let mut r = designcraft_render::Renderer::new();
+    let mut r = designz_render::Renderer::new();
     r.threads = 0;
     let img = r.render_page(
         &st.doc,
@@ -31,7 +31,7 @@ fn thumb(app: &mut DesignApp, ctx: &egui::Context, abs: usize, h: f32) -> Option
         abs,
         scale,
         false,
-        &designcraft_render::RenderOptions { printing_only: true, ..Default::default() },
+        &designz_render::RenderOptions { printing_only: true, ..Default::default() },
     )?;
     let ci = egui::ColorImage::from_rgba_premultiplied([img.width as usize, img.height as usize], &img.pixels);
     let tex = ctx.load_texture(format!("thumb{abs}"), ci, egui::TextureOptions::LINEAR);
@@ -145,7 +145,7 @@ pub fn show(app: &mut DesignApp, ui: &mut egui::Ui) {
                 let prefix = pp.parent.as_ref().map(|i| i.prefix.clone()).unwrap_or_default();
                 let g = ui.painter().layout_no_wrap(prefix, crate::theme::semibold(9.5), Color32::BLACK);
                 let w = g.size().x + 2.0;
-                let br = if p.side == designcraft_doc::PageSide::Left {
+                let br = if p.side == designz_doc::PageSide::Left {
                     egui::Rect::from_min_size(pr.left_top(), vec2(w, 10.0))
                 } else {
                     egui::Rect::from_min_size(pr.right_top() - vec2(w, 0.0), vec2(w, 10.0))
@@ -225,7 +225,7 @@ pub fn panel_menu(app: &mut DesignApp, ui: &mut egui::Ui) {
     page_menu(app, ui, &doc, cur, si);
 }
 
-fn page_menu(app: &mut DesignApp, ui: &mut egui::Ui, doc: &designcraft_doc::Document, abs: usize, si: usize) {
+fn page_menu(app: &mut DesignApp, ui: &mut egui::Ui, doc: &designz_doc::Document, abs: usize, si: usize) {
     if ui.button(crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, "Insert Page After"))).clicked() {
         let _ = app.run("layout.pages.insert", json!({"after": abs, "count": 1}));
         ui.close();

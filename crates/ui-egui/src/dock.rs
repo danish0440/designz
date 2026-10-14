@@ -347,7 +347,7 @@ mod visual_regressions {
         for brightness in crate::theme::Brightness::ALL {
             for width in [800.0, 1280.0] {
                 for scale in [1.0, 1.5, 2.0] {
-                    let mut app = DesignApp::new(designcraft_engine::Session::new(), Default::default());
+                    let mut app = DesignApp::new(designz_engine::Session::new(), Default::default());
                     app.ui.dock_expanded = true;
                     app.ui.dock_tab = "properties".into();
                     let mut ready = false;
@@ -366,7 +366,7 @@ mod visual_regressions {
                         );
                     harness.input_mut().max_texture_side = Some(8192);
                     harness.run_steps(4);
-                    let stem = format!("designcraft-dock-{}-{width}-{scale}x", brightness.id());
+                    let stem = format!("designz-dock-{}-{width}-{scale}x", brightness.id());
                     harness.render().unwrap().save(directory.join(format!("{stem}.png"))).unwrap();
                     let panel = egui::containers::panel::PanelState::load(&harness.ctx, egui::Id::new("dock")).unwrap().outer_rect;
                     let region = serde_json::json!({
@@ -396,7 +396,7 @@ mod visual_regressions {
                     crate::theme::install_fonts(&ctx, "en");
                     let tokens = Tokens::for_brightness(brightness);
                     crate::theme::apply(&ctx, &tokens);
-                    let mut app = DesignApp::new(designcraft_engine::Session::new(), Default::default());
+                    let mut app = DesignApp::new(designz_engine::Session::new(), Default::default());
                     app.ui.dock_expanded = true;
                     app.ui.dock_tab = "properties".into();
                     let mut output = ctx.run_ui(scaled_input(vec2(width, 640.0), scale), |ui| show(&mut app, ui));

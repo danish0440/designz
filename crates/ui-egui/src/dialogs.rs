@@ -1,7 +1,7 @@
 //! Modal dialogs. Each dialog keeps its fields in a JSON map so the control channel can set them
 //! (`ui.dialog.set {field, value}`) and confirm them (`ui.dialog.confirm`) like a user would.
 
-use designcraft_geom::{Unit, format_measure, units::parse_measure};
+use designz_geom::{Unit, format_measure, units::parse_measure};
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
@@ -202,7 +202,7 @@ fn keyboard_shortcuts(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
         }
     }
     let ql = q.to_lowercase();
-    let mut rows: Vec<(String, String, String)> = designcraft_engine::command_specs()
+    let mut rows: Vec<(String, String, String)> = designz_engine::command_specs()
         .iter()
         .filter(|c| !c.menu.is_empty() || c.shortcut.is_some())
         .map(|c| (c.id.to_string(), c.label.to_string(), c.menu.join(" › ")))
@@ -410,7 +410,7 @@ fn pdf_export(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
 }
 
 /// The options of the selected text frame (the first selected item, or the frame of the caret).
-fn selected_frame_options(app: &DesignApp) -> Option<designcraft_doc::TextFrameOptions> {
+fn selected_frame_options(app: &DesignApp) -> Option<designz_doc::TextFrameOptions> {
     let st = app.session.active()?;
     let fid = st.selection.items.first().copied().or_else(|| st.selection.text.and_then(|t| t.frame))?;
     st.doc.item(fid)?.text_frame().map(|t| t.options.clone())
@@ -491,7 +491,7 @@ fn text_frame_options_dialog(app: &DesignApp, ui: &mut egui::Ui, d: &mut Dialog)
             s.doc
                 .swatches
                 .iter()
-                .filter(|w| !matches!(w.value, designcraft_color::swatch::SwatchValue::Gradient { .. }))
+                .filter(|w| !matches!(w.value, designz_color::swatch::SwatchValue::Gradient { .. }))
                 .map(|w| w.name.clone())
                 .collect()
         })
@@ -650,11 +650,11 @@ fn document_setup(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
     crate::rtl::label(ui, egui::RichText::new(crate::i18n::tr(&app.ui.language, "Page Size")).font(semibold(12.0)));
     let (w, h) = (d.m("width").unwrap_or(612.0), d.m("height").unwrap_or(792.0));
     let preset =
-        designcraft_doc::build::PRESETS.iter().find(|p| (p.width - w).abs() < 0.5 && (p.height - h).abs() < 0.5).map_or("Custom", |p| p.name);
+        designz_doc::build::PRESETS.iter().find(|p| (p.width - w).abs() < 0.5 && (p.height - h).abs() < 0.5).map_or("Custom", |p| p.name);
     egui::Grid::new("ds_size").num_columns(4).spacing([8.0, 6.0]).show(ui, |ui| {
         crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Size:"));
         egui::ComboBox::from_id_salt("ds_preset").selected_text(preset).width(140.0).show_ui(ui, |ui| {
-            for p in designcraft_doc::build::PRESETS {
+            for p in designz_doc::build::PRESETS {
                 if ui.selectable_label(p.name == preset, p.name).clicked() {
                     d.fields.insert("width".into(), json!(format_measure(p.width, p.units)));
                     d.fields.insert("height".into(), json!(format_measure(p.height, p.units)));
@@ -1150,7 +1150,7 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
         "layerOptions" => crate::i18n::tr(&app.ui.language, "Object Layer Options"),
         "keyboardShortcuts" => crate::i18n::tr(&app.ui.language, "Keyboard Shortcuts"),
         "colorPicker" => crate::i18n::tr(&app.ui.language, "Color Picker"),
-        id => match id.strip_prefix("cmd:").and_then(designcraft_engine::find_command) {
+        id => match id.strip_prefix("cmd:").and_then(designz_engine::find_command) {
             Some(c) => crate::i18n::tr(&app.ui.language, c.label.trim_end_matches('…')),
             None => crate::i18n::tr(&app.ui.language, "Dialog"),
         },
@@ -1189,12 +1189,12 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
                     crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Preset"));
                     let cur = d.s("preset");
                     egui::ComboBox::from_id_salt("preset").selected_text(&cur).width(180.0).show_ui(ui, |ui| {
-                        for p in designcraft_doc::build::PRESETS {
+                        for p in designz_doc::build::PRESETS {
                             if ui.selectable_label(cur == p.name, p.name).clicked() {
                                 d.fields.insert("preset".into(), json!(p.name));
                                 d.fields.insert("width".into(), json!(format_measure(p.width, p.units)));
                                 d.fields.insert("height".into(), json!(format_measure(p.height, p.units)));
-                                d.fields.insert("facingPages".into(), json!(p.intent == designcraft_doc::Intent::Print));
+                                d.fields.insert("facingPages".into(), json!(p.intent == designz_doc::Intent::Print));
                             }
                         }
                     });
@@ -1455,9 +1455,9 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
                     crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Intent:"));
                     let cur = d.s("intent");
                     egui::ComboBox::from_id_salt("ws_intent")
-                        .selected_text(crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, designcraft_color::cms::Intent::parse(&cur).map_or("", |i| i.label()))))
+                        .selected_text(crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, designz_color::cms::Intent::parse(&cur).map_or("", |i| i.label()))))
                         .show_ui(ui, |ui| {
-                            for i in designcraft_color::cms::Intent::ALL {
+                            for i in designz_color::cms::Intent::ALL {
                                 if ui.selectable_label(i.id() == cur, crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, i.label()))).clicked() {
                                     d.fields.insert("intent".into(), json!(i.id()));
                                 }
@@ -1838,7 +1838,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
             let rename = d.s("rename");
             let (r, style) = if d.b("new") {
                 let mut params = json!({"name": if rename.trim().is_empty() { "Paragraph Style 1" } else { rename.trim() }, "para": para, "chars": chars});
-                if !based.is_empty() && based != designcraft_doc::NO_PARA_STYLE {
+                if !based.is_empty() && based != designz_doc::NO_PARA_STYLE {
                     params["basedOn"] = json!(based);
                 }
                 let r = app.run("style.paragraph.create", params)?;
@@ -1847,7 +1847,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
             } else {
                 let mut params = json!({"name": name, "para": para, "chars": chars});
                 if !based.is_empty() {
-                    params["basedOn"] = if based == designcraft_doc::NO_PARA_STYLE { Value::Null } else { json!(based) };
+                    params["basedOn"] = if based == designz_doc::NO_PARA_STYLE { Value::Null } else { json!(based) };
                 }
                 if !rename.is_empty() && rename != name {
                     params["rename"] = json!(rename);
@@ -1883,14 +1883,14 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
                 // A new style sets only what was filled in.
                 chars.retain(|_, v| !v.is_null());
                 let mut params = json!({"name": if rename.is_empty() { "Character Style 1" } else { rename.as_str() }, "chars": chars});
-                if let Some(b) = based.filter(|b| b != designcraft_doc::NO_CHAR_STYLE) {
+                if let Some(b) = based.filter(|b| b != designz_doc::NO_CHAR_STYLE) {
                     params["basedOn"] = json!(b);
                 }
                 app.run("style.character.create", params)
             } else {
                 let mut params = json!({"name": name, "chars": chars});
                 if let Some(b) = based {
-                    params["basedOn"] = if b == designcraft_doc::NO_CHAR_STYLE { Value::Null } else { json!(b) };
+                    params["basedOn"] = if b == designz_doc::NO_CHAR_STYLE { Value::Null } else { json!(b) };
                 }
                 if !rename.is_empty() && rename != name {
                     params["rename"] = json!(rename);
@@ -1916,7 +1916,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
         }
         "colorSettings" => {
             let r = app.run("color.settings", json!({"rgb": d.s("rgb"), "cmyk": d.s("cmyk"), "intent": d.s("intent"), "bpc": d.b("bpc")}))?;
-            app.ui.color_settings = Some(designcraft_color::cms::active_settings());
+            app.ui.color_settings = Some(designz_color::cms::active_settings());
             app.canvas.shown = None;
             Ok(r)
         }
@@ -2190,7 +2190,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
         }
         id if id.starts_with("cmd:") => {
             let cid = &id[4..];
-            let doc = designcraft_engine::find_command(cid).map_or("", |c| c.params);
+            let doc = designz_engine::find_command(cid).map_or("", |c| c.params);
             let mut p = Map::new();
             for f in command_fields(doc) {
                 match d.fields.get(&f.key) {
@@ -2236,7 +2236,7 @@ fn paragraph_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
     let new = d.b("new");
     let Some(doc) = app.session.active().map(|s| s.doc.clone()) else { return };
     let style = match doc.styles.para(&name) {
-        _ if new => designcraft_doc::ParagraphStyle {
+        _ if new => designz_doc::ParagraphStyle {
             name: String::new(),
             based_on: None,
             next_style: None,
@@ -2315,8 +2315,8 @@ fn paragraph_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
                 crate::rtl::label(ui, egui::RichText::new(crate::i18n::tr(&app.ui.language, "Drop Caps")).font(semibold(12.0)));
                 egui::Grid::new("psdc").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
                     for (label, key, max) in [
-                        ("Lines:", "dropCapLines", designcraft_compose::MAX_DROP_CAP_LINES),
-                        ("Characters:", "dropCapChars", designcraft_compose::MAX_DROP_CAP_CHARS),
+                        ("Lines:", "dropCapLines", designz_compose::MAX_DROP_CAP_LINES),
+                        ("Characters:", "dropCapChars", designz_compose::MAX_DROP_CAP_CHARS),
                     ] {
                         crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, label));
                         let v = cur(d, &format!("p.{key}"), &pv[key]).as_f64();
@@ -2327,7 +2327,7 @@ fn paragraph_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
                     }
                     crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Character Style:"));
                     let style = cur(d, "p.dropCapStyle", &pv["dropCapStyle"]).as_str().unwrap_or("").to_string();
-                    let style = if style.is_empty() { designcraft_doc::NO_CHAR_STYLE.to_string() } else { style };
+                    let style = if style.is_empty() { designz_doc::NO_CHAR_STYLE.to_string() } else { style };
                     egui::ComboBox::from_id_salt("ps_dropcap_style")
                         .selected_text(crate::rtl::widget(ui, crate::i18n::style_name(&app.ui.language, &style)))
                         .width(160.0)
@@ -2576,12 +2576,12 @@ fn paragraph_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
             "indents" => {
                 egui::Grid::new("psi").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
                     crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Alignment:"));
-                    let a: designcraft_doc::Align = serde_json::from_value(cur(d, "p.align", &pv["align"])).unwrap_or_default();
+                    let a: designz_doc::Align = serde_json::from_value(cur(d, "p.align", &pv["align"])).unwrap_or_default();
                     egui::ComboBox::from_id_salt("psalign")
                         .selected_text(crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, a.label())))
                         .width(240.0)
                         .show_ui(ui, |ui| {
-                            for al in designcraft_doc::Align::ALL {
+                            for al in designz_doc::Align::ALL {
                                 if ui.selectable_label(al == a, crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, al.label()))).clicked() {
                                     d.fields.insert("p.align".into(), serde_json::to_value(al).unwrap_or_default());
                                 }
@@ -2732,7 +2732,7 @@ fn section_list(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, sections: &[(&str
 }
 
 /// "Paragraph Style n" / "Character Style n": the first name no style has.
-fn next_style_name(styles: &designcraft_doc::Styles, para: bool) -> String {
+fn next_style_name(styles: &designz_doc::Styles, para: bool) -> String {
     let (base, count) = if para { ("Paragraph Style", styles.paragraph.len()) } else { ("Character Style", styles.character.len()) };
     let taken = |n: &str| if para { styles.para(n).is_some() } else { styles.char_style(n).is_some() };
     // Among count + 1 numbers at least one is free.
@@ -2742,7 +2742,7 @@ fn next_style_name(styles: &designcraft_doc::Styles, para: bool) -> String {
 /// Paragraph or Character Style Options for an existing style (a double-click on it in the styles
 /// panel, or Edit in its menu). [None] and [No Paragraph Style] have no options.
 pub fn open_style_options(app: &mut DesignApp, para: bool, name: &str) {
-    if name == if para { designcraft_doc::NO_PARA_STYLE } else { designcraft_doc::NO_CHAR_STYLE } {
+    if name == if para { designz_doc::NO_PARA_STYLE } else { designz_doc::NO_CHAR_STYLE } {
         return;
     }
     let id = if para { "paragraphStyleOptions" } else { "characterStyleOptions" };
@@ -2768,8 +2768,8 @@ fn character_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
     let Some(doc) = app.session.active().map(|st| st.doc.clone()) else { return };
     let styles = &doc.styles;
     let style = match styles.char_style(&name) {
-        _ if new => designcraft_doc::CharacterStyle { name: String::new(), based_on: None, chars: Default::default(), shortcut: String::new() },
-        Some(s) if name != designcraft_doc::NO_CHAR_STYLE => s.clone(),
+        _ if new => designz_doc::CharacterStyle { name: String::new(), based_on: None, chars: Default::default(), shortcut: String::new() },
+        Some(s) if name != designz_doc::NO_CHAR_STYLE => s.clone(),
         _ => {
             crate::rtl::label(ui, format!("No style named {name}"));
             return;
@@ -2784,7 +2784,7 @@ fn character_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
         .and_then(Value::as_str)
         .map(str::to_string)
         .or(style.based_on.clone())
-        .unwrap_or_else(|| designcraft_doc::NO_CHAR_STYLE.into());
+        .unwrap_or_else(|| designz_doc::NO_CHAR_STYLE.into());
     // The fields show the style's own attributes over those its Based On gives it.
     let mut shown = styles.char_style_attrs(&based);
     shown.merge(&style.chars);
@@ -2948,7 +2948,7 @@ fn char_check(ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, key: &str, lab
 }
 
 /// A swatch attribute from a menu; `text_color` names the "" entry (the text's own colour).
-fn char_swatch(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designcraft_doc::Document, key: &str, text_color: Option<&str>) {
+fn char_swatch(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designz_doc::Document, key: &str, text_color: Option<&str>) {
     let mut opts: Vec<(Value, &str)> = text_color.map(|l| (json!(""), l)).into_iter().collect();
     opts.extend(doc.swatches.iter().map(|w| (json!(w.name), w.name.as_str())));
     char_choice(lang, ui, d, cf, key, &opts);
@@ -3095,7 +3095,7 @@ fn advanced_character_formats(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf:
 }
 
 /// Character Color: the fill or stroke swatch, its tint and the stroke weight.
-fn character_color(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designcraft_doc::Document) {
+fn character_color(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designz_doc::Document) {
     let stroke = d.s("colorTarget") == "stroke";
     ui.horizontal(|ui| {
         for (target, label) in [("fill", "Fill"), ("stroke", "Stroke")] {
@@ -3132,7 +3132,7 @@ fn character_color(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharField
 /// OpenType Features: the feature switches, figure style and stylistic sets (one `otfFeatures`
 /// list: changing any feature sets the whole list).
 fn open_type_features(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields) {
-    use designcraft_doc::otf;
+    use designz_doc::otf;
     let mut list: Vec<String> =
         cf.get(d, "otfFeatures").as_array().map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()).unwrap_or_default();
     let mut changed = false;
@@ -3183,7 +3183,7 @@ fn open_type_features(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFi
 }
 
 /// Underline Options / Strikethrough Options (`key` is `underline` or `strikethrough`).
-fn line_options(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designcraft_doc::Document, key: &str) {
+fn line_options(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designz_doc::Document, key: &str) {
     char_check(ui, d, cf, key, crate::i18n::tr(lang, if key == "underline" { "Underline On" } else { "Strikethrough On" }));
     ui.add_space(4.0);
     egui::Grid::new(("csline", key)).num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
@@ -3234,8 +3234,8 @@ fn style_combo(app: &DesignApp, ui: &mut egui::Ui, d: &mut Dialog, key: &str, ch
         })
         .unwrap_or_default();
     let mut opts: Vec<(&str, &str)> = names.iter().map(|n| (n.as_str(), crate::i18n::style_name(&app.ui.language, n))).collect();
-    if character && !names.iter().any(|n| n == designcraft_doc::NO_CHAR_STYLE) {
-        opts.insert(0, (designcraft_doc::NO_CHAR_STYLE, crate::i18n::style_name(&app.ui.language, designcraft_doc::NO_CHAR_STYLE)));
+    if character && !names.iter().any(|n| n == designz_doc::NO_CHAR_STYLE) {
+        opts.insert(0, (designz_doc::NO_CHAR_STYLE, crate::i18n::style_name(&app.ui.language, designz_doc::NO_CHAR_STYLE)));
     }
     combo(ui, d, key, &opts);
 }
@@ -3600,7 +3600,7 @@ fn humanize(key: &str) -> String {
 
 /// A form for any command, from its parameter documentation.
 fn command_form(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
-    let doc = designcraft_engine::find_command(&d.id[4..]).map_or("", |c| c.params);
+    let doc = designz_engine::find_command(&d.id[4..]).map_or("", |c| c.params);
     let fields = command_fields(doc);
     let dim = crate::theme::Tokens::get(ui.ctx()).text_dim;
     egui::Grid::new("cmdform").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
@@ -3801,7 +3801,7 @@ fn insert_xref(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
                             if cur_style != all && st.paras[pi].style != cur_style {
                                 continue;
                             }
-                            let text = designcraft_doc::xref::clean(&st.text[r]);
+                            let text = designz_doc::xref::clean(&st.text[r]);
                             if text.is_empty() {
                                 continue;
                             }
@@ -3835,7 +3835,7 @@ fn insert_xref(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
 /// Color Picker: saturation/brightness field and hue slider, with RGB, CMYK and hex fields.
 fn color_picker(ui: &mut egui::Ui, d: &mut Dialog) {
     let hex = d.s("hex");
-    let mut c = designcraft_color::Color::from_hex(&hex).map(|c| c.to_rgb()).map_or(egui::Color32::BLACK, |[r, g, b]| {
+    let mut c = designz_color::Color::from_hex(&hex).map(|c| c.to_rgb()).map_or(egui::Color32::BLACK, |[r, g, b]| {
         egui::Color32::from_rgb((r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8)
     });
     let before = c;
@@ -3851,7 +3851,7 @@ fn color_picker(ui: &mut egui::Ui, d: &mut Dialog) {
                 }
             });
             c = egui::Color32::from_rgb(rgb[0] as u8, rgb[1] as u8, rgb[2] as u8);
-            let col = designcraft_color::Color::rgb8(c.r(), c.g(), c.b());
+            let col = designz_color::Color::rgb8(c.r(), c.g(), c.b());
             let [cc, m, y, k] = col.to_cmyk();
             ui.add_space(6.0);
             ui.label(format!("C {:.0}%  M {:.0}%  Y {:.0}%  K {:.0}%", cc * 100.0, m * 100.0, y * 100.0, k * 100.0));
@@ -3860,7 +3860,7 @@ fn color_picker(ui: &mut egui::Ui, d: &mut Dialog) {
                 ui.label("#");
                 let mut h = format!("{:02x}{:02x}{:02x}", c.r(), c.g(), c.b());
                 if ui.add(egui::TextEdit::singleline(&mut h).desired_width(70.0)).changed()
-                    && let Some(n) = designcraft_color::Color::from_hex(&h)
+                    && let Some(n) = designz_color::Color::from_hex(&h)
                 {
                     let [r, g, b] = n.to_rgb();
                     c = egui::Color32::from_rgb((r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8);
@@ -3933,7 +3933,7 @@ mod tests {
 
     #[test]
     fn step_and_repeat_dialog_previews_and_makes_the_copies_as_one_undo_step() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let id = app.run("frame.create", json!({"rect": [72, 600, 540, 640]})).unwrap()["id"].as_u64().unwrap();
         app.run("selection.set", json!({"ids": [id]})).unwrap();
@@ -3986,7 +3986,7 @@ mod tests {
         let r = confirm(&mut app).unwrap();
         assert_eq!((items(&app), undo(&app)), (n0 + 2, u0 + 1));
         let last = r["ids"][1].as_u64().unwrap();
-        let top = app.session.doc().unwrap().doc.item(designcraft_doc::ItemId(last)).unwrap().bounds().min_y();
+        let top = app.session.doc().unwrap().doc.item(designz_doc::ItemId(last)).unwrap().bounds().min_y();
         assert!((top - (600.0 - 108.0)).abs() < 1e-6, "{top}");
         // Create as a grid: Rows × Columns cells, the original being one.
         app.run("selection.set", json!({"ids": [id]})).unwrap();
@@ -4079,7 +4079,7 @@ mod tests {
         for language in ["en", "ar"] {
             for size in [egui::vec2(1178.0, 814.0), egui::vec2(589.0, 407.0), egui::vec2(392.0, 271.0), egui::vec2(450.0, 280.0)] {
                 for (command, title) in [("app.preferences", "Preferences"), ("app.newDocumentDialog", "New Document")] {
-                    let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+                    let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
                     app.ui.language = language.into();
                     app.run("file.new", json!({})).unwrap();
                     app.run(command, json!({})).unwrap();
@@ -4099,7 +4099,7 @@ mod tests {
 
     #[test]
     fn preferences_sidebar_scroll_keeps_selected_options_visible() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("app.preferences", json!({})).unwrap();
         let ctx = dialog_context("en");
@@ -4126,7 +4126,7 @@ mod tests {
 
     #[test]
     fn preferences_horizontal_scroll_reaches_clipped_options() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("app.preferences", json!({})).unwrap();
         let ctx = dialog_context("en");
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(450.0, 280.0));
@@ -4149,7 +4149,7 @@ mod tests {
 
     #[test]
     fn new_document_vertical_scroll_reaches_last_field() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("app.newDocumentDialog", json!({})).unwrap();
         let ctx = dialog_context("en");
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(392.0, 271.0));
@@ -4172,7 +4172,7 @@ mod tests {
     #[test]
     fn arabic_new_document_leftmost_fields_remain_reachable() {
         for size in [egui::vec2(392.0, 271.0), egui::vec2(450.0, 280.0)] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
             app.ui.language = "ar".into();
             app.run("app.newDocumentDialog", json!({})).unwrap();
             let fields = [("height", "66p1"), ("gutter", "1p2"), ("marginBottom", "3p3"), ("marginOutside", "3p4")];
@@ -4225,7 +4225,7 @@ mod tests {
     #[test]
     fn resized_dialogs_cancel_and_reopen_without_applying_edits() {
         for (command, title, field) in [("app.preferences", "Preferences", "recoveryMinutes"), ("app.newDocumentDialog", "New Document", "pages")] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
             app.run(command, json!({})).unwrap();
             let original = app.ui.dialog.as_ref().unwrap().fields[field].clone();
             app.ui.dialog.as_mut().unwrap().fields.insert(field.into(), json!(42));
@@ -4274,7 +4274,7 @@ mod tests {
 
     /// A paragraph styled "Ruled Child", whose Rule Below comes from its parent "Ruled".
     fn ruled_paragraph() -> (DesignApp, Value) {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let rule = json!({"on": true, "weight": 3.0, "color": "[Black]", "tint": 0.5, "columnWidth": false, "offset": 4.0, "leftIndent": 6.0, "rightIndent": 2.0});
         app.run("style.paragraph.create", json!({"name": "Ruled", "para": {"ruleBelow": rule}})).unwrap();
@@ -4336,7 +4336,7 @@ mod tests {
     }
 
     fn command_app(id: &str, fields: Value) -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.ui.dialog = Some(Dialog::new(&format!("cmd:{id}"), fields));
         app
     }
@@ -4377,7 +4377,7 @@ mod tests {
         confirm(&mut app).unwrap();
         let doc = &app.session.active().unwrap().doc;
         let item = doc.spreads.iter().flat_map(|s| &s.items).next().unwrap();
-        assert_eq!(item.bounds(), designcraft_geom::Rect::new(10.0, 20.0, 110.0, 220.0));
+        assert_eq!(item.bounds(), designz_geom::Rect::new(10.0, 20.0, 110.0, 220.0));
     }
 
     #[test]
@@ -4404,10 +4404,10 @@ mod tests {
 
     #[test]
     fn text_frame_options_change_only_what_was_edited() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let r = app.run("frame.create", json!({"rect": [36, 36, 336, 236], "content": "text", "text": "Hello"})).unwrap();
-        let id = designcraft_doc::ItemId(r["id"].as_u64().unwrap());
+        let id = designz_doc::ItemId(r["id"].as_u64().unwrap());
         app.run("object.textFrameOptions", json!({"ids": [id.0], "columns": 2, "inset": [1, 2, 3, 4]})).unwrap();
         let opts = |app: &DesignApp| app.session.doc().unwrap().doc.item(id).unwrap().text_frame().unwrap().options.clone();
         let before = opts(&app);
@@ -4440,7 +4440,7 @@ mod tests {
         // An unknown swatch is an error and the dialog stays open.
         let e = open(&mut app, &[("columnRuleColor", json!("Mauve"))]).unwrap_err();
         assert!(e.contains("Mauve") && app.ui.dialog.is_some(), "{e}");
-        assert_eq!(opts(&app).column_rule_color, designcraft_color::swatch::BLACK);
+        assert_eq!(opts(&app).column_rule_color, designz_color::swatch::BLACK);
         // Each OK is one undo step.
         for _ in 0..3 {
             app.run("edit.undo", json!({})).unwrap();
@@ -4471,7 +4471,7 @@ mod tests {
         assert_eq!(f[0].hint, "%");
         assert_eq!(f[2].hint, "parent items (default: all)");
         // Every command with a "…" label parses without panicking.
-        for c in designcraft_engine::command_specs() {
+        for c in designz_engine::command_specs() {
             let _ = command_fields(c.params);
         }
     }
@@ -4584,7 +4584,7 @@ mod tests {
 
     #[test]
     fn open_pdf_export_seeds_fields_from_settings() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.ui.pdf_export.standard = "x4".into();
         app.ui.pdf_export.tagged = false;
         app.ui.pdf_export.marks_crop = true;
@@ -4625,7 +4625,7 @@ mod tests {
     #[test]
     fn confirm_pdf_export_writes_file_and_persists_settings() {
         use std::sync::{Arc, Mutex};
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let writes: Arc<Mutex<Vec<(String, Vec<u8>)>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = writes.clone();
@@ -4633,7 +4633,7 @@ mod tests {
             sink.lock().unwrap().push((path.to_string(), bytes.to_vec()));
             Ok(())
         }));
-        app.services.pick_save = Some(Box::new(|_name: &str| Some("/tmp/designcraft-test.pdf".to_string())));
+        app.services.pick_save = Some(Box::new(|_name: &str| Some("/tmp/designz-test.pdf".to_string())));
 
         app.ui.dialog = Some(Dialog::new("pdfExport", json!({})));
         {
@@ -4648,7 +4648,7 @@ mod tests {
 
         let got = writes.lock().unwrap();
         assert_eq!(got.len(), 1, "confirming the dialog writes exactly one file");
-        assert_eq!(got[0].0, "/tmp/designcraft-test.pdf");
+        assert_eq!(got[0].0, "/tmp/designz-test.pdf");
         assert!(got[0].1.starts_with(b"%PDF"), "the written bytes are a PDF");
         drop(got);
 
@@ -4661,7 +4661,7 @@ mod tests {
     #[test]
     fn confirm_pdf_export_cancelled_save_writes_nothing() {
         use std::sync::{Arc, Mutex};
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let writes: Arc<Mutex<Vec<(String, Vec<u8>)>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = writes.clone();
@@ -4677,11 +4677,11 @@ mod tests {
         assert!(writes.lock().unwrap().is_empty(), "cancelling the save picker must not write");
     }
 
-    use designcraft_doc::{CharAttrs, CharacterStyle};
+    use designz_doc::{CharAttrs, CharacterStyle};
 
     /// A document with character styles Base (bold) and Emphasis (italic) on the first two letters.
     fn styled_app() -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("style.character.create", json!({"name": "Base", "chars": {"fontStyle": "Bold"}})).unwrap();
         app.run("style.character.create", json!({"name": "Emphasis", "chars": {"fontStyle": "Italic"}})).unwrap();
@@ -4759,10 +4759,10 @@ mod tests {
         let d = app.ui.dialog.clone().unwrap();
         assert_eq!((d.id.as_str(), d.b("new"), d.s("rename").as_str()), ("paragraphStyleOptions", true, "Paragraph Style 1"));
         ctl(&mut app, "ui.dialog.set", json!({"field": "c.size", "value": 20}));
-        ctl(&mut app, "ui.dialog.set", json!({"field": "basedOn", "value": designcraft_doc::BASIC_PARAGRAPH}));
+        ctl(&mut app, "ui.dialog.set", json!({"field": "basedOn", "value": designz_doc::BASIC_PARAGRAPH}));
         assert_eq!(ctl(&mut app, "ui.dialog.confirm", json!({}))["ok"], true);
         let st = app.session.active().unwrap().doc.styles.para("Paragraph Style 1").cloned().unwrap();
-        assert_eq!(st.based_on.as_deref(), Some(designcraft_doc::BASIC_PARAGRAPH));
+        assert_eq!(st.based_on.as_deref(), Some(designz_doc::BASIC_PARAGRAPH));
         assert_eq!(st.chars, CharAttrs { size: Some(20.0), ..Default::default() });
     }
 
@@ -4772,9 +4772,9 @@ mod tests {
         open_style_options(&mut app, false, "Emphasis");
         let d = app.ui.dialog.take().unwrap();
         assert_eq!((d.id.as_str(), d.s("name").as_str()), ("characterStyleOptions", "Emphasis"));
-        open_style_options(&mut app, false, designcraft_doc::NO_CHAR_STYLE);
+        open_style_options(&mut app, false, designz_doc::NO_CHAR_STYLE);
         assert!(app.ui.dialog.is_none());
-        open_style_options(&mut app, true, designcraft_doc::BASIC_PARAGRAPH);
+        open_style_options(&mut app, true, designz_doc::BASIC_PARAGRAPH);
         assert_eq!(app.ui.dialog.take().unwrap().id, "paragraphStyleOptions");
     }
 
@@ -4816,7 +4816,7 @@ mod tests {
 
     #[test]
     fn shortcut_recorder_waits_for_the_key_after_its_modifiers() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         let mut d = Dialog::new("keyboardShortcuts", json!({"query": "", "recording": "app.palette"}));
         let ctx = egui::Context::default();
         let key = |key, modifiers| egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers };

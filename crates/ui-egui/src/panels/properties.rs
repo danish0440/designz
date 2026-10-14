@@ -2,9 +2,9 @@
 //! sections per selection state — `plan/indesign/11-observed-ui.md` §4.1) and small
 //! single-purpose panels (Stroke, Character, Paragraph, Text Wrap, Align, Links, Info).
 
-use designcraft_doc::{Align, Arrowhead, Cap, Join, StrokeAlign, StrokeType};
-use designcraft_geom::Unit;
-use designcraft_geom::corners::CornerShape;
+use designz_doc::{Align, Arrowhead, Cap, Join, StrokeAlign, StrokeType};
+use designz_geom::Unit;
+use designz_geom::corners::CornerShape;
 use egui::{Rect, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use serde_json::{Value, json};
 
@@ -254,7 +254,7 @@ fn document_sections(app: &mut DesignApp, ui: &mut Ui) {
     if let Some(p) = d.page(cur).cloned() {
         let linked = temp_bool(ui, "margins_linked", true);
         let b = block(ui, 2.0 * FIELD_H + 5.0);
-        let mut set: Option<designcraft_doc::Margins> = None;
+        let mut set: Option<designz_doc::Margins> = None;
         let fields = [
             ("margin-top", "Top", p.margins.top, 0.0, 0.0),
             ("margin-bottom", "Bottom", p.margins.bottom, 0.0, 26.0),
@@ -273,7 +273,7 @@ fn document_sections(app: &mut DesignApp, ui: &mut Ui) {
             if let Some(nv) = nv {
                 let mut m = p.margins;
                 if linked {
-                    m = designcraft_doc::Margins { top: nv, bottom: nv, inside: nv, outside: nv };
+                    m = designz_doc::Margins { top: nv, bottom: nv, inside: nv, outside: nv };
                 } else {
                     match k {
                         0 => m.top = nv,
@@ -722,7 +722,7 @@ fn appearance_section(app: &mut DesignApp, ui: &mut Ui, i: &SelInfo) {
 }
 
 /// Swatch list popup attached to `resp`.
-fn swatch_menu(app: &mut DesignApp, resp: &egui::Response, doc: &designcraft_doc::Document, cur: &str, on_pick: impl FnOnce(&mut DesignApp, String)) {
+fn swatch_menu(app: &mut DesignApp, resp: &egui::Response, doc: &designz_doc::Document, cur: &str, on_pick: impl FnOnce(&mut DesignApp, String)) {
     let mut picked = None;
     egui::Popup::menu(resp).show(|ui| {
         ui.set_min_width(200.0);
@@ -905,7 +905,7 @@ fn text_style_section(app: &mut DesignApp, ui: &mut Ui) {
         let Some(st) = app.session.active() else { return };
         if tab == 0 {
             (
-                st.doc.styles.paragraph.iter().map(|p| p.name.clone()).filter(|n| n != designcraft_doc::NO_PARA_STYLE).collect(),
+                st.doc.styles.paragraph.iter().map(|p| p.name.clone()).filter(|n| n != designz_doc::NO_PARA_STYLE).collect(),
                 a["paragraphStyle"].as_str().unwrap_or("").to_string(),
             )
         } else {
@@ -988,7 +988,7 @@ fn text_appearance_section(app: &mut DesignApp, ui: &mut Ui) {
     let Some(doc) = app.session.active().map(|d| d.doc.clone()) else { return };
     let c = &a["chars"];
     for (k, (key, label)) in [("fill", "Fill"), ("stroke", "Stroke")].into_iter().enumerate() {
-        let sw = c[key].as_str().unwrap_or(designcraft_color::swatch::NONE).to_string();
+        let sw = c[key].as_str().unwrap_or(designz_color::swatch::NONE).to_string();
         let b = block(ui, FIELD_H);
         let (col, g) = widgets::swatch_colors(&doc, &sw, 1.0);
         let chip = sub(b, 4.0, 2.0, 17.0, 17.0);
@@ -1454,7 +1454,7 @@ pub fn character_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
 
 /// The Character panel's OpenType menu: feature toggles, figure styles and stylistic sets.
 pub fn open_type_menu(app: &mut DesignApp, ui: &mut egui::Ui, features: &[String]) {
-    use designcraft_doc::otf;
+    use designz_doc::otf;
     ui.set_min_width(220.0);
     for (tag, label, _) in otf::TOGGLES {
         let mut on = otf::is_on(features, tag);
@@ -1553,8 +1553,8 @@ pub fn paragraph_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
         }
         // Drop cap: number of lines and characters.
         for (label, key, max, id) in [
-            ("Drop Lines", "dropCapLines", designcraft_compose::MAX_DROP_CAP_LINES, "ppdl"),
-            ("Drop Chars", "dropCapChars", designcraft_compose::MAX_DROP_CAP_CHARS, "ppdc"),
+            ("Drop Lines", "dropCapLines", designz_compose::MAX_DROP_CAP_LINES, "ppdl"),
+            ("Drop Chars", "dropCapChars", designz_compose::MAX_DROP_CAP_CHARS, "ppdc"),
         ] {
             caption(ui, crate::i18n::tr(&app.ui.language, label));
             if let Some(v) = number(ui, id, p[key].as_f64(), "", 64.0, 0) {
@@ -1755,7 +1755,7 @@ pub fn stroke_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
 
 /// A short line ending in arrowhead `a` (pointing left for Start, right for End).
 fn arrow_preview(ui: &mut egui::Ui, a: Arrowhead, start: bool, color: egui::Color32) {
-    use designcraft_geom::kurbo;
+    use designz_geom::kurbo;
     let (r, _) = ui.allocate_exact_size(vec2(56.0, 14.0), Sense::hover());
     let mut line = kurbo::BezPath::new();
     let (y, x0, x1) = (r.center().y as f64, r.left() as f64 + 6.0, r.right() as f64 - 6.0);
@@ -1766,8 +1766,8 @@ fn arrow_preview(ui: &mut egui::Ui, a: Arrowhead, start: bool, color: egui::Colo
         line.move_to((x0, y));
         line.line_to((x1, y));
     }
-    let st = designcraft_doc::Stroke { weight: 1.5, end: a, ..Default::default() };
-    let (line, heads) = designcraft_doc::arrow::apply(&line, &st, false).unwrap_or((line, vec![]));
+    let st = designz_doc::Stroke { weight: 1.5, end: a, ..Default::default() };
+    let (line, heads) = designz_doc::arrow::apply(&line, &st, false).unwrap_or((line, vec![]));
     let pts = |p: &kurbo::BezPath| {
         let mut v = Vec::new();
         kurbo::flatten(p.iter(), 0.1, |el| match el {
@@ -2035,7 +2035,7 @@ pub fn info_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     match sel_info(app) {
         Some(i) => {
-            let f = |v: f64| designcraft_geom::format_measure(v, u);
+            let f = |v: f64| designz_geom::format_measure(v, u);
             crate::rtl::label(ui, format!("X: {}   Y: {}", f(i.page_rect.x0), f(i.page_rect.y0)));
             crate::rtl::label(ui, format!("W: {}   H: {}", f(i.page_rect.width()), f(i.page_rect.height())));
             crate::rtl::label(
@@ -2069,7 +2069,7 @@ pub fn effects_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
         crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Select an object."));
         return;
     };
-    use designcraft_color::BlendMode as B;
+    use designz_color::BlendMode as B;
     const MODES: [B; 16] = [
         B::Normal,
         B::Multiply,
@@ -2171,7 +2171,7 @@ pub fn effects_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
 
 pub fn preflight_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    let issues = designcraft_engine::cmd::preflight::check(&app.session, 150.0);
+    let issues = designz_engine::cmd::preflight::check(&app.session, 150.0);
     let errors = issues.iter().filter(|i| i.severity == "error").count();
     ui.horizontal(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(10.0, 10.0), egui::Sense::hover());
@@ -2247,7 +2247,7 @@ fn variable_font_axes(app: &mut DesignApp, ui: &mut egui::Ui, family: &str, styl
     if axes.is_empty() {
         return;
     }
-    let base = designcraft_fonts::base_style(style).to_string();
+    let base = designz_fonts::base_style(style).to_string();
     let face = db.face(family, style);
     let cur = |tag: &str, default: f32| face.coords.iter().find(|(t, _)| t == tag.as_bytes()).map_or(default, |c| c.1);
     let mut values: Vec<(String, f32)> = axes.iter().map(|a| (a.0.clone(), cur(&a.0, a.3))).collect();
@@ -2280,7 +2280,7 @@ mod tests {
 
     #[test]
     fn properties_character_section_sets_the_language() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [72, 72, 300, 200], "content": "text", "text": "bunun", "caret": true})).unwrap();
         app.run("edit.selectAll", json!({})).unwrap();
@@ -2308,12 +2308,12 @@ mod tests {
 
     #[test]
     fn clicking_a_swatch_chip_in_the_appearance_fill_menu_applies_it() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         // A graphic frame: the Appearance section shows a single Fill chip.
         let id = app.run("frame.create", json!({"rect": [72, 72, 300, 200]})).unwrap()["id"].as_u64().unwrap();
         app.run("selection.set", json!({"ids": [id]})).unwrap();
-        let before = app.session.active().unwrap().doc.item(designcraft_doc::ids::ItemId(id)).unwrap().fill.swatch.clone();
+        let before = app.session.active().unwrap().doc.item(designz_doc::ids::ItemId(id)).unwrap().fill.swatch.clone();
         assert_ne!(before, "[Paper]");
         let mut h = Harness::builder().with_size(vec2(320.0, 1400.0)).build_ui_state(
             |ui, app: &mut DesignApp| {
@@ -2341,13 +2341,13 @@ mod tests {
         h.drag_at(p);
         h.drop_at(p);
         h.run_steps(4);
-        let after = h.state().session.active().unwrap().doc.item(designcraft_doc::ids::ItemId(id)).unwrap().fill.swatch.clone();
+        let after = h.state().session.active().unwrap().doc.item(designz_doc::ids::ItemId(id)).unwrap().fill.swatch.clone();
         assert_eq!(after, name, "clicking the swatch chip applies it");
     }
 
     #[test]
     fn transform_flips_and_rotates_from_properties() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let id = app.run("frame.create", json!({"rect": [72, 72, 300, 200]})).unwrap()["id"].as_u64().unwrap();
         app.run("selection.set", json!({"ids": [id]})).unwrap();
@@ -2364,7 +2364,7 @@ mod tests {
             app,
         );
         h.run_steps(3);
-        let xf = |h: &Harness<'_, DesignApp>| h.state().session.active().unwrap().doc.item(designcraft_doc::ids::ItemId(id)).unwrap().xf;
+        let xf = |h: &Harness<'_, DesignApp>| h.state().session.active().unwrap().doc.item(designz_doc::ids::ItemId(id)).unwrap().xf;
         // Flip Horizontal mirrors the frame (a negative determinant); Flip Vertical as well brings it
         // back to a half turn, as in the tutorial's petal.
         h.get_by_label("Flip Horizontal").click();
@@ -2404,7 +2404,7 @@ mod tests {
 
     #[test]
     fn several_shapes_show_pathfinder_and_intersect_combines_them() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [100, 100, 300, 300], "shape": "ellipse"})).unwrap()["id"].clone();
         let b = app.run("frame.create", json!({"rect": [200, 100, 300, 200]})).unwrap()["id"].clone();
@@ -2466,7 +2466,7 @@ mod effects_panel_tests {
 
     #[test]
     fn the_effects_panel_shows_the_level_and_isolate_blending_and_knockout_group_for_groups() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Default::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), Default::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [72, 72, 144, 144]})).unwrap()["id"].as_u64().unwrap();
         let b = app.run("frame.create", json!({"rect": [100, 100, 200, 200]})).unwrap()["id"].as_u64().unwrap();
@@ -2480,7 +2480,7 @@ mod effects_panel_tests {
         for expected in ["Group:", "Color Dodge 100%", "Isolate Blending", "Knockout Group"] {
             assert!(texts.iter().any(|t| t == expected), "{expected} in {texts:?}");
         }
-        let item = |app: &DesignApp, id: u64| app.session.doc().unwrap().doc.item(designcraft_doc::ItemId(id)).cloned().unwrap();
+        let item = |app: &DesignApp, id: u64| app.session.doc().unwrap().doc.item(designz_doc::ItemId(id)).cloned().unwrap();
         click(&mut app, &ctx, "Isolate Blending");
         assert!(item(&app, g).isolate);
         click(&mut app, &ctx, "Knockout Group");
@@ -2495,7 +2495,7 @@ mod effects_panel_tests {
 
     #[test]
     fn pasted_into_frames_keep_object_level_and_disable_group_blending() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Default::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), Default::default());
         app.run("file.new", json!({})).unwrap();
         let child = app.run("frame.create", json!({"rect": [80, 80, 120, 120]})).unwrap()["id"].clone();
         app.run("selection.set", json!({"ids": [child]})).unwrap();
@@ -2513,7 +2513,7 @@ mod effects_panel_tests {
         click(&mut app, &ctx, "Isolate Blending");
         click(&mut app, &ctx, "Knockout Group");
         let st = app.session.doc().unwrap();
-        let it = st.doc.item(designcraft_doc::ItemId(container)).unwrap();
+        let it = st.doc.item(designz_doc::ItemId(container)).unwrap();
         assert!(it.has_nested_items());
         assert!(!it.isolate && !it.knockout, "group-only options stay disabled for a frame holding content");
         assert_eq!(st.history.undo.len(), undo, "disabled controls do not create undo steps");

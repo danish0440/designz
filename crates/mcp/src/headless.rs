@@ -1,9 +1,9 @@
 //! An in-process engine session that answers the engine-level control-channel methods itself.
 
-use designcraft_engine::{Session, ViewInfo};
-use designcraft_geom::Point;
-use designcraft_render::{RenderOptions, Renderer};
-use designcraft_tools::{Mods, PointerEvent, PointerKind, TOOL_GROUPS, ToolKey};
+use designz_engine::{Session, ViewInfo};
+use designz_geom::Point;
+use designz_render::{RenderOptions, Renderer};
+use designz_tools::{Mods, PointerEvent, PointerKind, TOOL_GROUPS, ToolKey};
 use serde_json::{Value, json};
 
 use crate::backend::Backend;
@@ -21,8 +21,8 @@ impl Default for Headless {
 }
 
 /// Hint appended to errors for methods that need a window.
-pub(crate) const NEEDS_APP: &str = "it needs the desktop app: start `designcraft --control 7979` and run the MCP server \
-with `designcraft-cli mcp --connect 7979`";
+pub(crate) const NEEDS_APP: &str = "it needs the desktop app: start `designz --control 7979` and run the MCP server \
+with `designz-cli mcp --connect 7979`";
 
 const VIEW: ViewInfo = ViewInfo::at_zoom(1.0);
 
@@ -97,7 +97,7 @@ impl Headless {
     fn exec(&mut self, id: &str, params: &Value) -> Result<Value, String> {
         let r = self.session.execute(id, params).map_err(|e| {
             let ui_only = ["app.", "view.", "window."].iter().any(|p| id.starts_with(p));
-            if ui_only && designcraft_engine::find_command(id).is_none() { format!("`{id}` is a UI command; {NEEDS_APP}") } else { e.to_string() }
+            if ui_only && designz_engine::find_command(id).is_none() { format!("`{id}` is a UI command; {NEEDS_APP}") } else { e.to_string() }
         });
         // Requests for a UI (file pickers, dialogs) have nobody to serve them here.
         self.session.ui_requests.clear();
@@ -147,7 +147,7 @@ impl Headless {
         // While typing, plain keys are text, not shortcuts.
         let plain = !mods.cmd && !mods.ctrl && !mods.alt;
         if !(typing && plain)
-            && let Some(c) = designcraft_engine::command_specs().iter().find(|c| c.shortcut.is_some_and(|sc| shortcut_matches(sc, key, mods)))
+            && let Some(c) = designz_engine::command_specs().iter().find(|c| c.shortcut.is_some_and(|sc| shortcut_matches(sc, key, mods)))
         {
             let r = self.exec(c.id, &json!({}))?;
             return Ok(json!({"handledBy": "command", "command": c.id, "result": r}));
@@ -202,10 +202,10 @@ impl Headless {
         let png = img.to_png();
         match s(p, "path") {
             Some(path) => {
-                designcraft_engine::atomic::write_atomic(std::path::Path::new(path), &png).map_err(|e| format!("write {path}: {e}"))?;
+                designz_engine::atomic::write_atomic(std::path::Path::new(path), &png).map_err(|e| format!("write {path}: {e}"))?;
                 Ok(json!({"path": path, "width": img.width, "height": img.height}))
             }
-            None => Ok(json!({"width": img.width, "height": img.height, "pngBase64": designcraft_engine::cmd::base64_encode(&png)})),
+            None => Ok(json!({"width": img.width, "height": img.height, "pngBase64": designz_engine::cmd::base64_encode(&png)})),
         }
     }
 
@@ -222,7 +222,7 @@ impl Headless {
             .ok_or_else(|| format!("no page {page}"))?;
         let lower = path.to_ascii_lowercase();
         let bytes = if lower.ends_with(".jpg") || lower.ends_with(".jpeg") { img.to_jpeg(90) } else { img.to_png() };
-        designcraft_engine::atomic::write_atomic(std::path::Path::new(path), &bytes).map_err(|e| format!("write {path}: {e}"))?;
+        designz_engine::atomic::write_atomic(std::path::Path::new(path), &bytes).map_err(|e| format!("write {path}: {e}"))?;
         Ok(json!({"path": path, "width": img.width, "height": img.height}))
     }
 }

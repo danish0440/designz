@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use designcraft_doc::{ItemId, Selection, SpreadRef};
+use designz_doc::{ItemId, Selection, SpreadRef};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bool_or, cmd, has_doc, has_selection, ids_param, ok};
@@ -28,7 +28,7 @@ fn has_selection_or_text(s: &Session) -> std::result::Result<(), String> {
 }
 
 /// Plain text of a story slice: markers and anchored objects dropped, footnote text omitted.
-fn plain(st: &designcraft_doc::Story) -> String {
+fn plain(st: &designz_doc::Story) -> String {
     st.text.chars().filter(|c| !('\u{E000}'..='\u{E1FF}').contains(c)).map(|c| if c == '\u{2028}' { '\n' } else { c }).collect()
 }
 
@@ -54,14 +54,14 @@ fn paste_text(s: &mut Session, text: Option<String>, formatted: bool) -> Result<
         && t.cell.is_none()
         && let Some(items) = s.clipboard.clone()
     {
-        let list: Vec<designcraft_doc::Item> = items.spreads.first().map(|sp| sp.items.iter().map(|i| (**i).clone()).collect()).unwrap_or_default();
+        let list: Vec<designz_doc::Item> = items.spreads.first().map(|sp| sp.items.iter().map(|i| (**i).clone()).collect()).unwrap_or_default();
         if !list.is_empty() && list.iter().all(|i| !i.is_text_frame()) {
             return s.edit(|d, sel| {
-                let st = d.story_mut(t.story).ok_or(designcraft_doc::DocError::NoStory(t.story))?;
+                let st = d.story_mut(t.story).ok_or(designz_doc::DocError::NoStory(t.story))?;
                 let r = t.range();
                 st.delete(r.start.min(st.len())..r.end.min(st.len()));
                 let end = super::anchored::anchor_items(d, t.story, r.start, list.clone(), &Default::default())?;
-                sel.text = Some(designcraft_doc::TextSel { anchor: end, focus: end, ..t });
+                sel.text = Some(designz_doc::TextSel { anchor: end, focus: end, ..t });
                 Ok(json!({"pos": end, "anchored": list.len()}))
             });
         }
@@ -71,12 +71,12 @@ fn paste_text(s: &mut Session, text: Option<String>, formatted: bool) -> Result<
     if use_clip && let Some((slice, _)) = clip {
         let slice = if t.cell.is_some() { strip_objects(&slice) } else { (*slice).clone() };
         return s.edit(|d, sel| {
-            let st = d.text_story_mut(t.story, t.cell).ok_or(designcraft_doc::DocError::NoStory(t.story))?;
+            let st = d.text_story_mut(t.story, t.cell).ok_or(designz_doc::DocError::NoStory(t.story))?;
             let r = t.range();
             let r = r.start.min(st.len())..r.end.min(st.len());
             st.delete(r.clone());
             let end = st.insert_story(r.start, &slice);
-            sel.text = Some(designcraft_doc::TextSel { anchor: end, focus: end, ..t });
+            sel.text = Some(designz_doc::TextSel { anchor: end, focus: end, ..t });
             Ok(json!({"pos": end, "formatted": true}))
         });
     }
@@ -97,8 +97,8 @@ fn outside_text(text: &str) -> Result<String> {
 /// of the page's margin area and as tall as the text (at most the margin area's height), centred
 /// on `at` (spread coordinates) or else on the margin area. The frame ends up selected. With
 /// `slice` (the text copied here), the frame's story is that formatted copy.
-fn paste_text_frame(s: &mut Session, p: &Value, text: &str, slice: Option<&designcraft_doc::Story>) -> Result<Value> {
-    use designcraft_geom::{Point, Rect, shapes};
+fn paste_text_frame(s: &mut Session, p: &Value, text: &str, slice: Option<&designz_doc::Story>) -> Result<Value> {
+    use designz_geom::{Point, Rect, shapes};
     const LIMIT: f64 = 1.0e5;
     let sr = super::spread_param(p, "spread")?;
     let at = super::point_param(p, "at")
@@ -118,12 +118,12 @@ fn paste_text_frame(s: &mut Session, p: &Value, text: &str, slice: Option<&desig
         let c = at.unwrap_or(Point::new(column.center().x, margins.center().y));
         let rect = |h: f64| Rect::new(c.x - w / 2.0, c.y - h / 2.0, c.x + w / 2.0, c.y + h / 2.0);
         let para = match slice.and_then(|sl| sl.paras.first()) {
-            Some(pf) => designcraft_doc::ParaFormat { table: None, ..pf.clone() },
-            None => designcraft_doc::ParaFormat { style: d.styles.default_paragraph.clone(), ..Default::default() },
+            Some(pf) => designz_doc::ParaFormat { table: None, ..pf.clone() },
+            None => designz_doc::ParaFormat { style: d.styles.default_paragraph.clone(), ..Default::default() },
         };
         let (id, sid) = d.add_text_frame(sr, rect(max_h), lid, &text, para)?;
         if let Some(sl) = slice {
-            d.story_mut(sid).ok_or(designcraft_doc::DocError::NoStory(sid))?.insert_story(0, sl);
+            d.story_mut(sid).ok_or(designz_doc::DocError::NoStory(sid))?.insert_story(0, sl);
         }
         // Shrink to the composed text unless it already fills the frame.
         let composed = cache.get(d, sid, None);
@@ -150,9 +150,9 @@ fn paste_text_frame(s: &mut Session, p: &Value, text: &str, slice: Option<&desig
     })
 }
 
-fn strip_objects(st: &designcraft_doc::Story) -> designcraft_doc::Story {
+fn strip_objects(st: &designz_doc::Story) -> designz_doc::Story {
     let mut out = st.clone();
-    let marks = [designcraft_doc::FOOTNOTE_REF, designcraft_doc::XREF_MARK, designcraft_doc::TABLE_ANCHOR];
+    let marks = [designz_doc::FOOTNOTE_REF, designz_doc::XREF_MARK, designz_doc::TABLE_ANCHOR];
     while let Some(i) = out.text.find(marks) {
         let n = out.text[i..].chars().next().map_or(1, char::len_utf8);
         out.delete(i..i + n);
@@ -220,7 +220,7 @@ pub fn specs() -> Vec<CommandSpec> {
             let st = s.doc_mut()?;
             if let Some(t) = st.selection.text {
                 let len = st.doc.text_story(t.story, t.cell).map(|x| x.len()).unwrap_or(0);
-                st.selection.text = Some(designcraft_doc::TextSel { anchor: 0, focus: len, ..t });
+                st.selection.text = Some(designz_doc::TextSel { anchor: 0, focus: len, ..t });
             } else {
                 let mut ids = Vec::new();
                 let parents = st.editing_parents;
@@ -308,7 +308,7 @@ pub fn specs() -> Vec<CommandSpec> {
                 let off = if bool_or(p, "inPlace", false) { 0.0 } else { 12.0 };
                 let ids: Vec<ItemId> = clip.spreads.first().map(|sp| sp.items.iter().map(|i| i.id).collect()).unwrap_or_default();
                 s.edit(|d, sel| {
-                    let new = super::object::duplicate_from(d, &clip, &ids, SpreadRef::Doc(0), designcraft_geom::Vec2::new(off, off))?;
+                    let new = super::object::duplicate_from(d, &clip, &ids, SpreadRef::Doc(0), designz_geom::Vec2::new(off, off))?;
                     *sel = Selection::items(new.clone());
                     Ok(json!({"ids": new.iter().map(|i| i.0).collect::<Vec<_>>()}))
                 })
@@ -331,7 +331,7 @@ pub fn specs() -> Vec<CommandSpec> {
 }
 
 /// A document holding copies of the selected items (and their stories) on spread 0.
-pub(crate) fn clip_doc(s: &Session) -> Result<designcraft_doc::Document> {
+pub(crate) fn clip_doc(s: &Session) -> Result<designz_doc::Document> {
     let st = s.doc()?;
     let mut d = (*st.doc).clone();
     let keep: Vec<ItemId> = st.selection.items.clone();
@@ -350,10 +350,10 @@ pub(crate) fn clip_doc(s: &Session) -> Result<designcraft_doc::Document> {
     let mut assets = std::collections::HashSet::new();
     for it in &items {
         it.walk(&mut |i| match &i.content {
-            designcraft_doc::Content::Text(_) => {
+            designz_doc::Content::Text(_) => {
                 frames.insert(i.id);
             }
-            designcraft_doc::Content::Graphic(g) => {
+            designz_doc::Content::Graphic(g) => {
                 assets.insert(g.asset);
             }
             _ => {}
@@ -380,7 +380,7 @@ pub(crate) fn clip_doc(s: &Session) -> Result<designcraft_doc::Document> {
 mod text_clipboard_tests {
     use super::*;
 
-    fn frame(s: &mut Session, text: &str) -> designcraft_doc::StoryId {
+    fn frame(s: &mut Session, text: &str) -> designz_doc::StoryId {
         let r = s.execute("frame.create", &json!({"rect": [72, 72, 400, 300], "content": "text", "text": text})).unwrap();
         s.doc().unwrap().doc.item(ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story
     }
@@ -477,7 +477,7 @@ mod text_clipboard_tests {
         // A footnote inside the copied range travels with it.
         s.execute("text.select", &json!({"story": a.0, "anchor": 4, "focus": 4})).unwrap();
         s.execute("footnote.insert", &json!({"text": "n"})).unwrap();
-        let fl = designcraft_doc::FOOTNOTE_REF.len_utf8();
+        let fl = designz_doc::FOOTNOTE_REF.len_utf8();
         s.execute("text.select", &json!({"story": a.0, "anchor": 0, "focus": 10 + fl})).unwrap();
         let r = s.execute("edit.copy", &json!({})).unwrap();
         assert_eq!(r["text"], "Bold words");
@@ -485,7 +485,7 @@ mod text_clipboard_tests {
         s.execute("text.select", &json!({"story": b.0, "anchor": 8, "focus": 8})).unwrap();
         s.execute("edit.paste", &json!({"text": "Bold words"})).unwrap();
         let st = s.doc().unwrap().doc.story(b).unwrap().clone();
-        assert_eq!(st.text, format!("Target: Bold{} words.", designcraft_doc::FOOTNOTE_REF));
+        assert_eq!(st.text, format!("Target: Bold{} words.", designz_doc::FOOTNOTE_REF));
         assert_eq!(st.char_format_at(9).over.font_style.as_deref(), Some("Bold"));
         assert_eq!(st.notes.len(), 1);
         assert_eq!(st.notes[0].text.text, "n");
@@ -545,14 +545,14 @@ fn paste_into(s: &mut Session, p: &Value) -> Result<Value> {
         return Err(super::bad("edit.pasteInto", "the clipboard holds no objects"));
     }
     s.edit(|d, sel| {
-        let loc = d.find(target).ok_or(designcraft_doc::DocError::NoItem(target))?;
-        let frame = d.item_at(&loc).ok_or(designcraft_doc::DocError::NoItem(target))?.clone();
+        let loc = d.find(target).ok_or(designz_doc::DocError::NoItem(target))?;
+        let frame = d.item_at(&loc).ok_or(designz_doc::DocError::NoItem(target))?.clone();
         if frame.is_group() || frame.is_text_frame() {
             return Err(super::bad("edit.pasteInto", "paste into a graphic or empty frame (not a group or text frame)"));
         }
         let world = d.parent_xf(&loc) * frame.xf;
         // Copies on the frame's spread (stories and images come along), then nested in the frame.
-        let new = super::object::duplicate_from(d, &clip, &ids, loc.spread, designcraft_geom::Vec2::ZERO)?;
+        let new = super::object::duplicate_from(d, &clip, &ids, loc.spread, designz_geom::Vec2::ZERO)?;
         let mut kids = Vec::new();
         for id in &new {
             kids.push(d.remove_item_keep_story(*id)?);
@@ -560,17 +560,17 @@ fn paste_into(s: &mut Session, p: &Value) -> Result<Value> {
         // Centre the content on the frame when it doesn't overlap it (like InDesign).
         let fb = frame.bounds();
         let cb = kids.iter().map(|k| k.bounds()).reduce(|a, b| a.union(b)).unwrap_or(fb);
-        let shift = if cb.intersect(fb).area() > 0.0 { designcraft_geom::Vec2::ZERO } else { fb.center().to_vec2() - cb.center().to_vec2() };
+        let shift = if cb.intersect(fb).area() > 0.0 { designz_geom::Vec2::ZERO } else { fb.center().to_vec2() - cb.center().to_vec2() };
         let inv = world.inverse();
-        let kids: Vec<Arc<designcraft_doc::Item>> = kids
+        let kids: Vec<Arc<designz_doc::Item>> = kids
             .into_iter()
             .map(|mut k| {
-                k.xf = inv * designcraft_geom::Affine::translate(shift) * k.xf;
+                k.xf = inv * designz_geom::Affine::translate(shift) * k.xf;
                 Arc::new(k)
             })
             .collect();
-        let it = d.item_mut(target).ok_or(designcraft_doc::DocError::NoItem(target))?;
-        it.content = designcraft_doc::Content::Group { items: kids };
+        let it = d.item_mut(target).ok_or(designz_doc::DocError::NoItem(target))?;
+        it.content = designz_doc::Content::Group { items: kids };
         *sel = Selection::items(vec![target]);
         Ok(json!({"id": target.0, "items": new.len()}))
     })
@@ -595,10 +595,10 @@ mod paste_into_tests {
         assert_eq!(d.spreads[0].items.len(), 1, "the black square is inside the frame now");
         let f = d.item(ItemId(frame)).unwrap();
         assert!(f.has_nested_items() && !f.is_group());
-        assert_eq!(f.bounds(), designcraft_geom::Rect::new(150.0, 150.0, 250.0, 250.0), "bounds stay the frame's");
+        assert_eq!(f.bounds(), designz_geom::Rect::new(150.0, 150.0, 250.0, 250.0), "bounds stay the frame's");
         // Rendered clipped: black inside the frame, nothing outside it.
-        let cache = designcraft_compose::Cache::new();
-        let mut r = designcraft_render::Renderer::new();
+        let cache = designz_compose::Cache::new();
+        let mut r = designz_render::Renderer::new();
         let img = r.render_page(&d, &cache, 0, 1.0, false, &Default::default()).unwrap();
         assert!(img.pixel(200, 200)[0] < 90, "{:?}", img.pixel(200, 200));
         assert!(img.pixel(120, 120)[0] > 200, "{:?}", img.pixel(120, 120));

@@ -1,0 +1,25 @@
+[package]
+name = "designz-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "designz-cli"
+path = "src/main.rs"
+
+[dependencies]
+designz-engine = { workspace = true }
+designz-render = { workspace = true }
+designz-doc = { workspace = true }
+designz-geom = { workspace = true }
+designz-color = { workspace = true }
+designz-compose = { workspace = true }
+designz-format = { workspace = true }
+designz-pdf = { workspace = true }
+designz-mcp = { workspace = true }
+serde_json = { workspace = true }

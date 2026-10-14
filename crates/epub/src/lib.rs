@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::io::Write;
 
-use designcraft_doc::{Align, CharAttrs, CharProps, Content, Document, Item, ItemId, ParaProps, SpreadRef, StoryId, Styles, story};
+use designz_doc::{Align, CharAttrs, CharProps, Content, Document, Item, ItemId, ParaProps, SpreadRef, StoryId, Styles, story};
 
 #[derive(Clone, Debug)]
 pub struct EpubOptions {
@@ -40,7 +40,7 @@ pub fn export_fixed_epub(doc: &Document, pages: &[FixedPage], opts: &EpubOptions
     let zerr = |e: zip::result::ZipError| EpubError(e.to_string());
     let title = opts.title.clone().unwrap_or_else(|| doc.title.clone());
     let lang = language_tag(&opts.language);
-    let id = opts.identifier.clone().unwrap_or_else(|| format!("urn:designcraft:{}", slug(&title)));
+    let id = opts.identifier.clone().unwrap_or_else(|| format!("urn:designz:{}", slug(&title)));
     let mut manifest = String::from("<item id=\"nav\" href=\"nav.xhtml\" media-type=\"application/xhtml+xml\" properties=\"nav\"/>\n");
     let mut spine = String::new();
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
@@ -70,7 +70,7 @@ pub fn export_fixed_epub(doc: &Document, pages: &[FixedPage], opts: &EpubOptions
     );
     let author = opts.author.as_deref().map(|a| format!("<dc:creator>{}</dc:creator>", xml_text(a))).unwrap_or_default();
     let opf = format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"bookid\" xml:lang=\"{lang}\" prefix=\"rendition: http://www.idpf.org/vocab/rendition/#\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"bookid\">{}</dc:identifier>\n<dc:title>{}</dc:title>\n<dc:language>{lang}</dc:language>{author}\n<meta property=\"dcterms:modified\">2026-01-01T00:00:00Z</meta>\n<meta property=\"rendition:layout\">pre-paginated</meta>\n<meta property=\"rendition:spread\">auto</meta>\n<meta name=\"original-resolution\" content=\"{vw}x{vh}\"/>\n<meta name=\"generator\" content=\"DesignCraft\"/>\n</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{spine}</spine>\n</package>\n",
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"bookid\" xml:lang=\"{lang}\" prefix=\"rendition: http://www.idpf.org/vocab/rendition/#\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"bookid\">{}</dc:identifier>\n<dc:title>{}</dc:title>\n<dc:language>{lang}</dc:language>{author}\n<meta property=\"dcterms:modified\">2026-01-01T00:00:00Z</meta>\n<meta property=\"rendition:layout\">pre-paginated</meta>\n<meta property=\"rendition:spread\">auto</meta>\n<meta name=\"original-resolution\" content=\"{vw}x{vh}\"/>\n<meta name=\"generator\" content=\"DesignZ\"/>\n</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{spine}</spine>\n</package>\n",
         xml_text(&id),
         xml_text(&title)
     );
@@ -262,8 +262,8 @@ fn char_css(doc: &Document, c: &CharProps, base_size: f64, out: &mut String) {
         let _ = write!(out, "letter-spacing: {:.3}em; ", c.tracking / 1000.0);
     }
     match c.capitalization {
-        designcraft_doc::Capitalization::AllCaps => out.push_str("text-transform: uppercase; "),
-        designcraft_doc::Capitalization::SmallCaps | designcraft_doc::Capitalization::OpenTypeAllSmallCaps => {
+        designz_doc::Capitalization::AllCaps => out.push_str("text-transform: uppercase; "),
+        designz_doc::Capitalization::SmallCaps | designz_doc::Capitalization::OpenTypeAllSmallCaps => {
             out.push_str("font-variant: small-caps; ")
         }
         _ => {}
@@ -311,13 +311,13 @@ pub fn stylesheet(doc: &Document) -> String {
     );
     let (pc, cc) = (para_classes(st), char_classes(st));
     for ps in &st.paragraph {
-        if ps.name == designcraft_doc::NO_PARA_STYLE {
+        if ps.name == designz_doc::NO_PARA_STYLE {
             continue;
         }
         let (pp, cp) = st.resolve_para_style(&ps.name);
         let lead = match cp.leading {
-            designcraft_doc::Leading::Auto => pp.auto_leading,
-            designcraft_doc::Leading::Points(v) => v / cp.size.max(1.0),
+            designz_doc::Leading::Auto => pp.auto_leading,
+            designz_doc::Leading::Points(v) => v / cp.size.max(1.0),
         };
         let mut rule = String::new();
         para_css(&pp, base, lead, &mut rule);
@@ -377,7 +377,7 @@ fn override_css(doc: &Document, o: &CharAttrs) -> String {
     if o.underline == Some(true) {
         s.push_str("text-decoration: underline; ");
     }
-    if o.capitalization == Some(designcraft_doc::Capitalization::AllCaps) {
+    if o.capitalization == Some(designz_doc::Capitalization::AllCaps) {
         s.push_str("text-transform: uppercase; ");
     }
     s.trim_end().to_string()
@@ -435,7 +435,7 @@ pub fn story_html(doc: &Document, sid: StoryId) -> String {
         // Export Tagging: the style's element and class.
         let (tag, class) = export_mapping(&doc.styles, &pf.style, false, &pc);
         let text_empty = st.text[r.clone()].trim().is_empty();
-        let rtl = doc.styles.resolve_para(pf).0.direction == designcraft_doc::TextDirection::RightToLeft;
+        let rtl = doc.styles.resolve_para(pf).0.direction == designz_doc::TextDirection::RightToLeft;
         let _ = write!(out, "<{tag} class=\"{}\"{}>", xml_attr(&class), if rtl { " dir=\"rtl\"" } else { "" });
         if text_empty {
             out.push_str("&#160;");
@@ -447,14 +447,14 @@ pub fn story_html(doc: &Document, sid: StoryId) -> String {
                 continue;
             }
             // Hidden conditional text isn't exported.
-            if f.over.conditions.as_deref().is_some_and(|c| doc.conditions_hide(c)) || f.over.change == Some(designcraft_doc::ChangeMark::Deleted) {
+            if f.over.conditions.as_deref().is_some_and(|c| doc.conditions_hide(c)) || f.over.change == Some(designz_doc::ChangeMark::Deleted) {
                 continue;
             }
             let raw = &st.text[a..b];
-            let t = if raw.chars().any(|c| designcraft_doc::vars::var_index(c).is_some()) {
+            let t = if raw.chars().any(|c| designz_doc::vars::var_index(c).is_some()) {
                 let sub: String = raw
                     .chars()
-                    .map(|c| match designcraft_doc::vars::var_index(c) {
+                    .map(|c| match designz_doc::vars::var_index(c) {
                         Some(i) => doc.variable_value(i, None).unwrap_or_default(),
                         None => c.to_string(),
                     })
@@ -597,7 +597,7 @@ fn body_html<'a>(
                 }
                 let mime = safe_mime(&a.mime);
                 // Video and sound: an HTML5 player (with the poster, when there is one).
-                if let Some(kind) = designcraft_doc::media_kind(mime) {
+                if let Some(kind) = designz_doc::media_kind(mime) {
                     let name = format!("media/{}.{}", g.asset.0, ext(mime));
                     images.insert(name.clone(), (mime, a.data.as_slice()));
                     let m = doc.item(*iid).and_then(|i| i.media.clone()).unwrap_or_default();
@@ -662,7 +662,7 @@ pub fn export_html(doc: &Document, opts: &HtmlOptions) -> String {
     let lang = language_tag(language);
     let (body, _, _) = body_html(doc, &|_, mime, data| format!("data:{mime};base64,{}", base64(data)));
     format!(
-        "<!DOCTYPE html>\n<html lang=\"{lang}\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"generator\" content=\"DesignCraft\">\n<title>{}</title>\n<style>\nbody {{ max-width: 40em; margin: 2em auto; padding: 0 1em; }}\nfigure {{ margin: 1em 0; }} figure img {{ max-width: 100%; height: auto; }}\n{}</style>\n</head>\n<body>\n{body}</body>\n</html>\n",
+        "<!DOCTYPE html>\n<html lang=\"{lang}\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"generator\" content=\"DesignZ\">\n<title>{}</title>\n<style>\nbody {{ max-width: 40em; margin: 2em auto; padding: 0 1em; }}\nfigure {{ margin: 1em 0; }} figure img {{ max-width: 100%; height: auto; }}\n{}</style>\n</head>\n<body>\n{body}</body>\n</html>\n",
         xml_text(&title),
         stylesheet(doc)
     )
@@ -685,7 +685,7 @@ pub fn export_epub(doc: &Document, opts: &EpubOptions) -> Result<Vec<u8>, EpubEr
     let io = |e: std::io::Error| EpubError(e.to_string());
     let zerr = |e: zip::result::ZipError| EpubError(e.to_string());
     let title = opts.title.clone().unwrap_or_else(|| doc.title.clone());
-    let id = opts.identifier.clone().unwrap_or_else(|| format!("urn:designcraft:{}", slug(&title)));
+    let id = opts.identifier.clone().unwrap_or_else(|| format!("urn:designz:{}", slug(&title)));
     let (body, images, toc) = body_html(doc, &|name, _, _| name.to_string());
     let lang = language_tag(&opts.language);
     let chapter = format!(
@@ -716,7 +716,7 @@ pub fn export_epub(doc: &Document, opts: &EpubOptions) -> Result<Vec<u8>, EpubEr
     let cover_spine = if opts.cover.is_some() { "<itemref idref=\"cover\"/>\n" } else { "" };
     let author = opts.author.as_deref().map(|a| format!("<dc:creator>{}</dc:creator>", xml_text(a))).unwrap_or_default();
     let opf = format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"bookid\" xml:lang=\"{lang}\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"bookid\">{}</dc:identifier>\n<dc:title>{}</dc:title>\n<dc:language>{lang}</dc:language>{author}\n<meta property=\"dcterms:modified\">2026-01-01T00:00:00Z</meta>\n<meta name=\"generator\" content=\"DesignCraft\"/>\n</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{cover_spine}<itemref idref=\"content\"/>\n</spine>\n</package>\n",
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"bookid\" xml:lang=\"{lang}\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"bookid\">{}</dc:identifier>\n<dc:title>{}</dc:title>\n<dc:language>{lang}</dc:language>{author}\n<meta property=\"dcterms:modified\">2026-01-01T00:00:00Z</meta>\n<meta name=\"generator\" content=\"DesignZ\"/>\n</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{cover_spine}<itemref idref=\"content\"/>\n</spine>\n</package>\n",
         xml_text(&id),
         xml_text(&title)
     );
@@ -761,9 +761,9 @@ pub fn export_epub(doc: &Document, opts: &EpubOptions) -> Result<Vec<u8>, EpubEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use designcraft_doc::build::NewDocument;
-    use designcraft_doc::geom::{Affine, Rect, shapes};
-    use designcraft_doc::{Asset, AssetId, Content, Graphic, Item, ItemId, ParaFormat, Shape, SpreadRef};
+    use designz_doc::build::NewDocument;
+    use designz_doc::geom::{Affine, Rect, shapes};
+    use designz_doc::{Asset, AssetId, Content, Graphic, Item, ItemId, ParaFormat, Shape, SpreadRef};
     use std::io::Read;
     use std::sync::Arc;
 
@@ -793,7 +793,7 @@ mod tests {
         let mut d = Document::new(&NewDocument::default());
         let lid = d.default_layer();
         for (name, size) in [("見出し", 30.0), ("本文", 10.0), ("Body Text", 12.0), ("Body-Text", 20.0)] {
-            d.styles_mut().paragraph.push(designcraft_doc::ParagraphStyle {
+            d.styles_mut().paragraph.push(designz_doc::ParagraphStyle {
                 name: name.into(),
                 based_on: None,
                 next_style: None,
@@ -853,7 +853,7 @@ mod tests {
         let (_, sid) = d.add_text_frame(SpreadRef::Doc(0), Rect::new(36.0, 36.0, 300.0, 100.0), lid, "A&B <C> \"D\"", ParaFormat::default()).unwrap();
         d.styles_mut()
             .export_tags
-            .insert(format!("p:{}", story::BASIC_PARAGRAPH), designcraft_doc::ExportTag { tag: "h2".into(), class: "Primary \"Copy\"".into() });
+            .insert(format!("p:{}", story::BASIC_PARAGRAPH), designz_doc::ExportTag { tag: "h2".into(), class: "Primary \"Copy\"".into() });
         if let Some(basic) = d.styles_mut().paragraph.iter_mut().find(|s| s.name == story::BASIC_PARAGRAPH) {
             basic.chars.font_family = Some("Quoted \"Serif\" <Alt>".into());
         }

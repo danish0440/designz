@@ -3,8 +3,8 @@
 //! InDesign. Clicking an end point of an open path (the cursor shows it) continues that path from
 //! there; dragging from it first reshapes its direction lines.
 
-use designcraft_doc::{ItemId, SpreadRef};
-use designcraft_geom::{BezPath, Point};
+use designz_doc::{ItemId, SpreadRef};
+use designz_geom::{BezPath, Point};
 use serde_json::{Value, json};
 
 use crate::{Action, Cursor, Mods, Overlay, PointerEvent, PointerKind, Tool, ToolContext, ToolKey, spread_json};
@@ -41,7 +41,7 @@ fn endpoint_at(cx: &ToolContext, p: Point) -> Option<(ItemId, usize, bool)> {
     }
     for id in ids {
         let Some(it) = cx.doc.item(id) else { continue };
-        if it.locked || it.is_group() || !matches!(it.content, designcraft_doc::Content::Unassigned) {
+        if it.locked || it.is_group() || !matches!(it.content, designz_doc::Content::Unassigned) {
             continue;
         }
         let Some(xf) = cx.item_canvas_xf(id).map(|m| m * it.xf) else { continue };
@@ -85,7 +85,7 @@ impl PenTool {
         let Some(sp) = it.path.subpaths.get(si) else { return vec![] };
         let (Some(first), Some(last)) = (sp.anchors.first(), sp.anchors.last()) else { return vec![] };
         let xf = cx.doc.parent_xf(&loc) * it.xf;
-        let at = |a: &designcraft_geom::Anchor, flip: bool| {
+        let at = |a: &designz_geom::Anchor, flip: bool| {
             let (i, o) = if flip { (a.h_out, a.h_in) } else { (a.h_in, a.h_out) };
             (xf * a.p, xf * i, xf * o)
         };
@@ -104,7 +104,7 @@ impl PenTool {
     /// Shift constrains first. The stored point is the snapped spread point. Guides are already canvas.
     fn snap_click(&mut self, cx: &ToolContext, spread: SpreadRef, mut p: Point, shift: bool) -> Point {
         if shift && let Some(last) = self.anchors.last() {
-            p = last.0 + designcraft_geom::constrain_angle(p - last.0, 45.0);
+            p = last.0 + designz_geom::constrain_angle(p - last.0, 45.0);
         }
         let (p, guides) = crate::snap::snap_point(cx, spread, p);
         self.guides = guides;

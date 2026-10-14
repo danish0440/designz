@@ -1,12 +1,12 @@
-//! Name and enumeration mappings between the DesignCraft model and IDML.
+//! Name and enumeration mappings between the DesignZ model and IDML.
 
-use designcraft_color::BlendMode;
-use designcraft_doc::{
+use designz_color::BlendMode;
+use designz_doc::{
     Align, Arrowhead, AutoSize, Cap, Capitalization, FirstBaseline, Join, Leading, NumberStyle, Position, StartParagraph, StrokeAlign, StrokeType,
     TabAlign, VerticalJustification, WrapMode, WrapSide,
 };
-use designcraft_geom::Unit;
-use designcraft_geom::corners::CornerShape;
+use designz_geom::Unit;
+use designz_geom::corners::CornerShape;
 
 /// `%` → `%25`, `:` → `%3a` (IDML Self-id escaping).
 const ANCHORS: [&str; 9] = [
@@ -21,8 +21,8 @@ const ANCHORS: [&str; 9] = [
     "BottomRightAnchor",
 ];
 
-pub fn anchor_rel_out(r: designcraft_doc::anchored::AnchorRelative, vertical: bool) -> &'static str {
-    use designcraft_doc::anchored::AnchorRelative as R;
+pub fn anchor_rel_out(r: designz_doc::anchored::AnchorRelative, vertical: bool) -> &'static str {
+    use designz_doc::anchored::AnchorRelative as R;
     match r {
         R::Anchor if vertical => "LineBaseline",
         R::Anchor => "AnchorLocation",
@@ -33,8 +33,8 @@ pub fn anchor_rel_out(r: designcraft_doc::anchored::AnchorRelative, vertical: bo
     }
 }
 
-pub fn anchor_rel_in(s: &str) -> designcraft_doc::anchored::AnchorRelative {
-    use designcraft_doc::anchored::AnchorRelative as R;
+pub fn anchor_rel_in(s: &str) -> designz_doc::anchored::AnchorRelative {
+    use designz_doc::anchored::AnchorRelative as R;
     match s {
         "TextFrame" => R::TextFrame,
         "ColumnEdge" => R::ColumnEdge,
@@ -52,8 +52,8 @@ pub fn anchor_in(s: &str) -> u8 {
     ANCHORS.iter().position(|a| *a == s).unwrap_or(4) as u8
 }
 
-pub fn fitting_out(f: designcraft_doc::Fitting) -> &'static str {
-    use designcraft_doc::Fitting as F;
+pub fn fitting_out(f: designz_doc::Fitting) -> &'static str {
+    use designz_doc::Fitting as F;
     match f {
         F::None => "None",
         F::FillProportionally => "FillProportionally",
@@ -63,8 +63,8 @@ pub fn fitting_out(f: designcraft_doc::Fitting) -> &'static str {
     }
 }
 
-pub fn fitting_in(s: &str) -> designcraft_doc::Fitting {
-    use designcraft_doc::Fitting as F;
+pub fn fitting_in(s: &str) -> designz_doc::Fitting {
+    use designz_doc::Fitting as F;
     match s {
         "FillProportionally" => F::FillProportionally,
         "Proportionally" => F::FitProportionally,
@@ -519,10 +519,10 @@ pub fn unit_in(s: &str) -> Unit {
 
 /// IDML layer colour enumeration names for our layer colour table.
 pub fn layer_color_out(c: [u8; 3]) -> Option<String> {
-    designcraft_doc::LAYER_COLORS.iter().find(|(_, v)| *v == c).map(|(n, _)| n.replace(' ', ""))
+    designz_doc::LAYER_COLORS.iter().find(|(_, v)| *v == c).map(|(n, _)| n.replace(' ', ""))
 }
 pub fn layer_color_in(s: &str) -> Option<[u8; 3]> {
-    designcraft_doc::LAYER_COLORS.iter().find(|(n, _)| n.replace(' ', "") == s).map(|(_, v)| *v)
+    designz_doc::LAYER_COLORS.iter().find(|(n, _)| n.replace(' ', "") == s).map(|(_, v)| *v)
 }
 
 /// Format a number compactly (no trailing zeros, no `-0`).
@@ -596,17 +596,17 @@ pub fn note_style_in(s: &str) -> NumberStyle {
         s => number_style_in(s),
     }
 }
-pub const NOTE_RESTART: [(designcraft_doc::notes::NoteRestart, &str); 4] = [
-    (designcraft_doc::notes::NoteRestart::Never, "DontRestart"),
-    (designcraft_doc::notes::NoteRestart::Page, "PageRestart"),
-    (designcraft_doc::notes::NoteRestart::Spread, "SpreadRestart"),
-    (designcraft_doc::notes::NoteRestart::Section, "SectionRestart"),
+pub const NOTE_RESTART: [(designz_doc::notes::NoteRestart, &str); 4] = [
+    (designz_doc::notes::NoteRestart::Never, "DontRestart"),
+    (designz_doc::notes::NoteRestart::Page, "PageRestart"),
+    (designz_doc::notes::NoteRestart::Spread, "SpreadRestart"),
+    (designz_doc::notes::NoteRestart::Section, "SectionRestart"),
 ];
-pub const NOTE_AFFIX: [(designcraft_doc::notes::AffixIn, &str); 4] = [
-    (designcraft_doc::notes::AffixIn::None, "NoPrefixSuffix"),
-    (designcraft_doc::notes::AffixIn::Reference, "PrefixSuffixReference"),
-    (designcraft_doc::notes::AffixIn::Text, "PrefixSuffixMarker"),
-    (designcraft_doc::notes::AffixIn::Both, "PrefixSuffixBoth"),
+pub const NOTE_AFFIX: [(designz_doc::notes::AffixIn, &str); 4] = [
+    (designz_doc::notes::AffixIn::None, "NoPrefixSuffix"),
+    (designz_doc::notes::AffixIn::Reference, "PrefixSuffixReference"),
+    (designz_doc::notes::AffixIn::Text, "PrefixSuffixMarker"),
+    (designz_doc::notes::AffixIn::Both, "PrefixSuffixBoth"),
 ];
 pub fn note_marker_out(p: Position) -> &'static str {
     match p {
@@ -624,8 +624,8 @@ pub fn note_marker_in(s: &str) -> Position {
 }
 
 /// Nested-style delimiter → (property type, value).
-pub fn nested_until_out(u: &designcraft_doc::NestedUntil) -> (&'static str, String) {
-    use designcraft_doc::NestedUntil as N;
+pub fn nested_until_out(u: &designz_doc::NestedUntil) -> (&'static str, String) {
+    use designz_doc::NestedUntil as N;
     let e = |v: &str| ("enumeration", v.to_string());
     match u {
         N::Sentences => e("Sentence"),
@@ -642,8 +642,8 @@ pub fn nested_until_out(u: &designcraft_doc::NestedUntil) -> (&'static str, Stri
     }
 }
 
-pub fn nested_until_in(ty: &str, v: &str) -> designcraft_doc::NestedUntil {
-    use designcraft_doc::NestedUntil as N;
+pub fn nested_until_in(ty: &str, v: &str) -> designz_doc::NestedUntil {
+    use designz_doc::NestedUntil as N;
     if ty == "string" {
         return N::Chars(v.to_string());
     }
@@ -661,26 +661,26 @@ pub fn nested_until_in(ty: &str, v: &str) -> designcraft_doc::NestedUntil {
     }
 }
 
-pub fn path_align_out(a: designcraft_doc::PathAlign) -> &'static str {
+pub fn path_align_out(a: designz_doc::PathAlign) -> &'static str {
     match a {
-        designcraft_doc::PathAlign::Baseline => "BaselineAlignment",
-        designcraft_doc::PathAlign::Ascender => "AscenderAlignment",
-        designcraft_doc::PathAlign::Descender => "DescenderAlignment",
-        designcraft_doc::PathAlign::Center => "CenterAlignment",
+        designz_doc::PathAlign::Baseline => "BaselineAlignment",
+        designz_doc::PathAlign::Ascender => "AscenderAlignment",
+        designz_doc::PathAlign::Descender => "DescenderAlignment",
+        designz_doc::PathAlign::Center => "CenterAlignment",
     }
 }
 
-pub fn path_align_in(v: &str) -> designcraft_doc::PathAlign {
+pub fn path_align_in(v: &str) -> designz_doc::PathAlign {
     match v {
-        "AscenderAlignment" => designcraft_doc::PathAlign::Ascender,
-        "DescenderAlignment" => designcraft_doc::PathAlign::Descender,
-        "CenterAlignment" => designcraft_doc::PathAlign::Center,
-        _ => designcraft_doc::PathAlign::Baseline,
+        "AscenderAlignment" => designz_doc::PathAlign::Ascender,
+        "DescenderAlignment" => designz_doc::PathAlign::Descender,
+        "CenterAlignment" => designz_doc::PathAlign::Center,
+        _ => designz_doc::PathAlign::Baseline,
     }
 }
 
-pub fn digits_out(d: designcraft_doc::Digits) -> &'static str {
-    use designcraft_doc::Digits;
+pub fn digits_out(d: designz_doc::Digits) -> &'static str {
+    use designz_doc::Digits;
     match d {
         Digits::Default => "DefaultDigits",
         Digits::Arabic => "ArabicDigits",
@@ -689,7 +689,7 @@ pub fn digits_out(d: designcraft_doc::Digits) -> &'static str {
         Digits::Native => "NativeDigits",
     }
 }
-pub fn digits_in(s: &str) -> Option<designcraft_doc::Digits> {
-    use designcraft_doc::Digits;
+pub fn digits_in(s: &str) -> Option<designz_doc::Digits> {
+    use designz_doc::Digits;
     [Digits::Default, Digits::Arabic, Digits::Hindi, Digits::Farsi, Digits::Native].into_iter().find(|d| digits_out(*d) == s)
 }

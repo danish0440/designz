@@ -24,7 +24,7 @@ basics of editing fail for too many users on Windows and Linux.
 
 **✓** like InDesign · **~** present, differs or unreliable · **✗** missing.
 
-| Area | InDesign 2026 | DesignCraft | Status | Evidence |
+| Area | InDesign 2026 | DesignZ | Status | Evidence |
 |---|---|---|---|---|
 | Chrome: app bar, Control panel, Tools panel, dock, doc tabs, status bar | Medium Dark, measured sizes | measured look | ✓ | 11-observed-ui.md |
 | Properties panel and Contextual Task Bar | per selection | ✓, task bar movable (#143) | ✓ | |
@@ -63,7 +63,7 @@ context menus, typing at a caret) are things a layout artist does every minute, 
 | Work | Opus 5.5 h |
 |---|---|
 | Copy/paste, context menus, threading clicks, caret formatting on every platform, with control-channel regression tests | 30–50 |
-| Canvas IME (port from VectorCraft) | 10–20 |
+| Canvas IME (port from VectorZ) | 10–20 |
 | Missing menu items (~150) and panels (Tabs, Navigator, Trap Presets) | 40–70 |
 | Handle/tool feel fixes (#186, #188, #337), font search focus | 10–20 |
 | Dialog depth pass against 07-dialogs.md | 30–40 |

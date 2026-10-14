@@ -1,4 +1,4 @@
-//! DesignCraft's egui frontend: an InDesign-style UI over `designcraft-engine`.
+//! DesignZ's egui frontend: an InDesign-style UI over `designz-engine`.
 //!
 //! The UI is thin: every action goes through [`DesignApp::run`], which dispatches UI commands
 //! (view/window) here and everything else to the engine. Menus, shortcuts, the ⌘K palette and
@@ -30,8 +30,8 @@ pub mod widgets;
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-use designcraft_engine::{Session, SnapView, UiRequest, ViewInfo};
-use designcraft_geom::{Point, Unit};
+use designz_engine::{Session, SnapView, UiRequest, ViewInfo};
+use designz_geom::{Point, Unit};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -191,10 +191,10 @@ pub struct UiState {
     /// Tab / Shift+Tab: 1 = every panel hidden, 2 = all but the Tools panel (0 = shown).
     pub hidden_panels: u8,
     /// Edit › Color Settings (re-applied at start).
-    pub color_settings: Option<designcraft_color::cms::ColorSettings>,
+    pub color_settings: Option<designz_color::cms::ColorSettings>,
     /// View › Proof Colors and View › Proof Setup.
     pub proof_colors: bool,
-    pub proof_setup: designcraft_color::cms::ProofSetup,
+    pub proof_setup: designz_color::cms::ProofSetup,
     /// Edit › Spelling › Dynamic Spelling: misspelled words underlined on the canvas.
     pub dynamic_spelling: bool,
     /// Preferences › Story Editor Display: text size (points).
@@ -211,7 +211,7 @@ pub struct UiState {
     #[serde(skip)]
     pub ink_limit: Option<f32>,
     /// View › Display Performance.
-    pub display_quality: designcraft_render::DisplayQuality,
+    pub display_quality: designz_render::DisplayQuality,
     /// Preferences › Interface › UI scaling (1 = 100%).
     pub ui_scale: f32,
     /// Preferences › Appearance of Black: 100% K on screen as rich black.
@@ -279,7 +279,7 @@ pub struct UiState {
     /// Where the Contextual Task Bar was last shown, like [`Self::task_bar_pin`].
     #[serde(skip)]
     pub task_bar_at: Option<[f32; 2]>,
-    /// Help › About DesignCraft is open.
+    /// Help › About DesignZ is open.
     pub about: bool,
     /// The About window's tab: 0 About, 1 Contributors, 2 Models (`about::ABOUT_TABS`).
     #[serde(skip)]
@@ -332,7 +332,7 @@ impl Default for UiState {
             pdf_export: PdfExportSettings::default(),
             separation: None,
             ink_limit: None,
-            display_quality: designcraft_render::DisplayQuality::High,
+            display_quality: designz_render::DisplayQuality::High,
             ui_scale: 1.0,
             rich_black: false,
             overprint_preview: false,
@@ -426,8 +426,8 @@ pub struct Shown {
 
 impl CanvasCache {
     pub fn new() -> Self {
-        let mut renderer = designcraft_render::Renderer::new();
-        renderer.threads = designcraft_render::default_threads();
+        let mut renderer = designz_render::Renderer::new();
+        renderer.threads = designz_render::default_threads();
         CanvasCache {
             renderer,
             texture: None,
@@ -440,7 +440,7 @@ impl CanvasCache {
             last_ms: 0.0,
             shown_doc: None,
             pending_doc: None,
-            patcher: designcraft_render::Renderer::new(),
+            patcher: designz_render::Renderer::new(),
             patches: 0,
         }
     }
@@ -453,7 +453,7 @@ impl Default for CanvasCache {
 }
 
 pub struct CanvasCache {
-    pub renderer: designcraft_render::Renderer,
+    pub renderer: designz_render::Renderer,
     pub texture: Option<egui::TextureHandle>,
     pub shown: Option<Shown>,
     /// The request in flight on the worker.
@@ -464,11 +464,11 @@ pub struct CanvasCache {
     pub worker_started: bool,
     pub last_ms: f64,
     /// The document the texture shows (to repaint only what an edit changed).
-    pub shown_doc: Option<std::sync::Arc<designcraft_doc::Document>>,
+    pub shown_doc: Option<std::sync::Arc<designz_doc::Document>>,
     /// Document of the request in flight.
-    pub pending_doc: Option<std::sync::Arc<designcraft_doc::Document>>,
+    pub pending_doc: Option<std::sync::Arc<designz_doc::Document>>,
     /// Renders damaged regions (its own context: region sizes vary).
-    pub patcher: designcraft_render::Renderer,
+    pub patcher: designz_render::Renderer,
     /// Partial repaints / full renders since start (perf readout).
     pub patches: u64,
 }
@@ -499,7 +499,7 @@ pub struct DesignApp {
     pub focus_pane: u8,
     pub other_pane: Option<(CanvasCache, Option<egui::Rect>)>,
     /// Power Zoom in progress: the zoom to return to and the canvas point it will centre on.
-    pub power_zoom: Option<(f64, designcraft_geom::Point)>,
+    pub power_zoom: Option<(f64, designz_geom::Point)>,
     /// The persisted colour settings have been applied this session.
     pub color_applied: bool,
     pub perf: Perf,
@@ -509,7 +509,7 @@ pub struct DesignApp {
     control_input_frame: std::sync::Arc<std::sync::atomic::AtomicBool>,
     clipboard_guard_installed: bool,
     /// Story open in the Story Editor.
-    pub story_editor: Option<designcraft_doc::StoryId>,
+    pub story_editor: Option<designz_doc::StoryId>,
     control_rx: Option<Receiver<ControlRequest>>,
     pending_shots: Vec<(u64, Option<String>, Sender<ControlResponse>, f64)>,
     queued_shots: Vec<(u64, f64, u32)>,
@@ -553,7 +553,7 @@ struct QuitState {
 impl DesignApp {
     pub fn new(session: Session, services: Services) -> Self {
         // The font menus and the first file opened need the installed fonts: catalog them now.
-        designcraft_fonts::FontDb::global().scan_in_background();
+        designz_fonts::FontDb::global().scan_in_background();
         DesignApp {
             pending_pdf: None,
             session,
@@ -763,7 +763,7 @@ impl DesignApp {
                 // Image Import Options: a multi-page PDF asks which page.
                 Some(path) if purpose == "place" && path.to_ascii_lowercase().ends_with(".pdf") => {
                     let pages =
-                        self.services.read.as_mut().and_then(|r| r(&path).ok()).and_then(|b| designcraft_render::pdf_page_count(&b)).unwrap_or(1);
+                        self.services.read.as_mut().and_then(|r| r(&path).ok()).and_then(|b| designz_render::pdf_page_count(&b)).unwrap_or(1);
                     if pages > 1 {
                         self.ui.dialog =
                             Some(dialogs::Dialog::new("pdfImport", json!({"path": path, "page": "1", "pages": pages, "target": target})));
@@ -806,7 +806,7 @@ impl DesignApp {
         self.activate_import_target(&file.request)?;
         self.open_file(
             "file.place",
-            json!({"name": file.name, "base64": designcraft_engine::cmd::base64_encode(&file.bytes), "pdfPage": page, "pdfCrop": crop}),
+            json!({"name": file.name, "base64": designz_engine::cmd::base64_encode(&file.bytes), "pdfPage": page, "pdfCrop": crop}),
         )
     }
 
@@ -850,7 +850,7 @@ impl DesignApp {
             self.activate_import_target(&file.request)?;
         }
         if place && lower.ends_with(".pdf") {
-            let pages = designcraft_render::pdf_page_count(&file.bytes).unwrap_or(1);
+            let pages = designz_render::pdf_page_count(&file.bytes).unwrap_or(1);
             if pages > 1 {
                 self.ui.dialog =
                     Some(dialogs::Dialog::new("pdfImport", json!({"async": true, "name": file.name.clone(), "page": "1", "pages": pages})));
@@ -858,7 +858,7 @@ impl DesignApp {
                 return Ok(Value::Null);
             }
         }
-        let b64 = designcraft_engine::cmd::base64_encode(&file.bytes);
+        let b64 = designz_engine::cmd::base64_encode(&file.bytes);
         if lower.ends_with(".ase") || file.request.purpose == "swatches" {
             self.run("swatch.load", json!({"base64": b64}))
         } else if place {
@@ -882,7 +882,7 @@ impl DesignApp {
         if !self.color_applied {
             self.color_applied = true;
             if let Some(cs) = self.ui.color_settings.clone() {
-                let _ = designcraft_color::cms::set_active(&cs);
+                let _ = designz_color::cms::set_active(&cs);
             }
         }
         let scale = self.ui.ui_scale.clamp(0.5, 3.0);
@@ -1171,7 +1171,7 @@ impl DesignApp {
         if presenting || self.ui.hidden_panels != 0 {
             panel_docking::cancel_gesture(self, &ctx);
         }
-        let dbg = std::env::var_os("DESIGNCRAFT_DEBUG_LAYOUT").is_some();
+        let dbg = std::env::var_os("DESIGNZ_DEBUG_LAYOUT").is_some();
         if dbg {
             eprintln!("root start {:?}", ui.available_rect_before_wrap());
         }
@@ -1256,7 +1256,7 @@ impl DesignApp {
             let fill = t.pasteboard;
             let ctx = ui.ctx().clone();
             ctx.show_viewport_immediate(
-                egui::ViewportId::from_hash_of("designcraft_second_window"),
+                egui::ViewportId::from_hash_of("designz_second_window"),
                 egui::ViewportBuilder::default().with_title(title).with_inner_size([960.0, 720.0]),
                 |ui, _class| {
                     egui::CentralPanel::default().frame(egui::Frame::NONE.fill(fill)).show(ui, |ui| {
@@ -1364,11 +1364,11 @@ impl DesignApp {
     }
 }
 
-/// Files that open as documents (when dropped or picked) rather than being placed: DesignCraft
+/// Files that open as documents (when dropped or picked) rather than being placed: DesignZ
 /// and IDML.
 pub fn opens_as_document(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
-    [".designcraft", ".idml"].iter().any(|ext| n.ends_with(ext))
+    [".designz", ".idml"].iter().any(|ext| n.ends_with(ext))
 }
 
 pub fn now_ms() -> f64 {
@@ -1406,7 +1406,7 @@ mod tests {
 
     /// An app with one document that has an unsaved edit.
     fn app_with_unsaved_document() -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), Services::default());
         app.run("file.new", json!({})).unwrap();
         assert!(!app.session.documents()[0].is_dirty(), "a new document has nothing to save");
         app.run("frame.create", json!({"rect": [36, 36, 136, 136]})).unwrap();
@@ -1444,7 +1444,7 @@ mod tests {
     #[test]
     fn closing_with_save_writes_the_file_then_closes() {
         let mut app = app_with_unsaved_document();
-        let path = std::env::temp_dir().join(format!("designcraft-close-test-{}.designcraft", std::process::id()));
+        let path = std::env::temp_dir().join(format!("designz-close-test-{}.designz", std::process::id()));
         app.run("file.saveAs", json!({"path": path})).unwrap();
         let saved = std::fs::metadata(&path).unwrap().len();
         app.run("frame.create", json!({"rect": [200, 200, 300, 300]})).unwrap();
@@ -1469,7 +1469,7 @@ mod tests {
 
     #[test]
     fn closing_a_saved_document_does_not_ask() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), Services::default());
         app.run("file.new", json!({})).unwrap();
         menus::activate(&mut app, "file.close", &Value::Null);
         assert!(app.session.documents().is_empty());
@@ -1590,7 +1590,7 @@ mod tests {
         let completed = quit_frame(&mut app, &ctx, true);
         assert!(app.session.documents().is_empty());
 
-        let mut clean = DesignApp::new(designcraft_engine::Session::new(), Services::default());
+        let mut clean = DesignApp::new(designz_engine::Session::new(), Services::default());
         clean.run("file.new", json!({})).unwrap();
         let clean_close = quit_frame(&mut clean, &ctx, true);
         let mut control = app_with_unsaved_document();
@@ -1636,7 +1636,7 @@ mod tests {
             assert!(std::sync::Arc::ptr_eq(&document.doc, &original));
             assert!(document.is_dirty());
             assert!(!document.history.undo.is_empty());
-            assert!(directory.path().join(format!("{}.designcraft", document.uid)).exists());
+            assert!(directory.path().join(format!("{}.designz", document.uid)).exists());
         }
         // A fresh Dock Quit must ask about the first document again after cancellation.
         assert!(quit_frame(&mut app, &ctx, true).contains(&egui::ViewportCommand::CancelClose));
@@ -1650,7 +1650,7 @@ mod tests {
         second_unsaved_document(&mut app);
         let uids: Vec<_> = app.session.documents().iter().map(|d| d.uid).collect();
         let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("saved.designcraft");
+        let path = directory.path().join("saved.designz");
         let chosen = path.to_string_lossy().to_string();
         app.services.pick_save = Some(Box::new(move |_| Some(chosen.clone())));
         app.session.recovery_dir = Some(directory.path().join("recovery"));
@@ -1666,11 +1666,11 @@ mod tests {
         discard_quit_dialog(&mut app);
         assert!(quit_frame(&mut app, &ctx, false).contains(&egui::ViewportCommand::Close));
         assert_eq!(app.session.documents().len(), 2);
-        assert!(app.session.recovery_dir.as_ref().unwrap().join(format!("{}.designcraft", uids[1])).exists());
+        assert!(app.session.recovery_dir.as_ref().unwrap().join(format!("{}.designz", uids[1])).exists());
         assert!(quit_frame(&mut app, &ctx, true).is_empty());
         assert!(app.session.documents().is_empty());
         assert!(path.exists());
-        assert_eq!(designcraft_engine::Session::new().execute("file.open", &json!({"path": path})).unwrap()["index"], 0);
+        assert_eq!(designz_engine::Session::new().execute("file.open", &json!({"path": path})).unwrap()["index"], 0);
         assert_eq!(std::fs::read_dir(app.session.recovery_dir.as_ref().unwrap()).unwrap().count(), 0);
     }
 
@@ -1710,9 +1710,9 @@ mod tests {
         let mut app = app_with_unsaved_document();
         second_unsaved_document(&mut app);
         let path = std::env::temp_dir()
-            .join(format!("designcraft-quit-missing-{}-{}", std::process::id(), app.session.active().unwrap().uid))
+            .join(format!("designz-quit-missing-{}-{}", std::process::id(), app.session.active().unwrap().uid))
             .join("missing")
-            .join("document.designcraft");
+            .join("document.designz");
         assert!(!path.parent().unwrap().exists());
         let picked = path.to_string_lossy().to_string();
         app.services.pick_save = Some(Box::new(move |_| Some(picked.clone())));
@@ -1734,7 +1734,7 @@ mod tests {
         let mut app = app_with_unsaved_document();
         second_unsaved_document(&mut app);
         let first = app.session.documents()[0].uid;
-        let path = std::env::temp_dir().join(format!("designcraft-quit-save-{}-{first}.designcraft", std::process::id()));
+        let path = std::env::temp_dir().join(format!("designz-quit-save-{}-{first}.designz", std::process::id()));
         let picked = path.to_string_lossy().to_string();
         app.services.pick_save = Some(Box::new(move |_| Some(picked.clone())));
         quit_frame(&mut app, &ctx, true);
@@ -1787,7 +1787,7 @@ mod tests {
         let mut app = app_with_unsaved_document();
         second_unsaved_document(&mut app);
         let first = app.session.documents()[0].uid;
-        let path = std::env::temp_dir().join(format!("designcraft-quit-uid-{}-{first}.designcraft", std::process::id()));
+        let path = std::env::temp_dir().join(format!("designz-quit-uid-{}-{first}.designz", std::process::id()));
         let picked = path.to_string_lossy().to_string();
         app.services.pick_save = Some(Box::new(move |_| Some(picked.clone())));
         quit_frame(&mut app, &ctx, true);
@@ -1806,10 +1806,10 @@ mod tests {
         let ctx = egui::Context::default();
         let mut app = app_with_unsaved_document();
         let uid = app.session.active().unwrap().uid;
-        let dir = std::env::temp_dir().join(format!("designcraft-quit-recovery-{}-{uid}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("designz-quit-recovery-{}-{uid}", std::process::id()));
         app.session.recovery_dir = Some(dir.clone());
         app.run("file.recovery.save", json!({})).unwrap();
-        let entry = dir.join(format!("{uid}.designcraft"));
+        let entry = dir.join(format!("{uid}.designz"));
         quit_frame(&mut app, &ctx, true);
         discard_quit_dialog(&mut app);
         assert!(quit_frame(&mut app, &ctx, false).contains(&egui::ViewportCommand::Close));
@@ -1872,7 +1872,7 @@ mod tests {
     #[test]
     fn quitting_without_unsaved_changes_closes_at_once() {
         let ctx = egui::Context::default();
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), Services::default());
         app.run("file.new", json!({})).unwrap();
         // Quit (⌘Q) closes the window like its close button.
         app.run("app.quit", json!({})).unwrap();
@@ -1900,7 +1900,7 @@ mod tests {
     #[test]
     fn control_bar_shows_its_second_row() {
         use egui_kittest::kittest::Queryable as _;
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), Services::default());
         app.run("file.newSample", json!({})).unwrap();
         app.ui.control_bar = true;
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).build_ui_state(
@@ -1980,7 +1980,7 @@ mod tests {
 
     /// A temporary file named `name` whose bytes aren't a document or a graphic.
     fn unreadable_file(name: &str) -> std::path::PathBuf {
-        let path = std::env::temp_dir().join(format!("designcraft-ui-{}-{name}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("designz-ui-{}-{name}", std::process::id()));
         std::fs::write(&path, b"neither a document nor a graphic").unwrap();
         path
     }
@@ -1994,7 +1994,7 @@ mod tests {
 
     #[test]
     fn dropped_documents_open_and_the_rest_is_placed() {
-        for name in ["a.designcraft", "B.IDML"] {
+        for name in ["a.designz", "B.IDML"] {
             assert!(opens_as_document(name), "{name}");
         }
         for name in ["a.png", "b.pdf", "idml.txt", "c.idml.zip"] {
@@ -2005,7 +2005,7 @@ mod tests {
     #[test]
     fn dropping_an_unreadable_file_alerts() {
         // A document opens, so it says it can't be opened.
-        let path = unreadable_file("broken.designcraft");
+        let path = unreadable_file("broken.designz");
         let mut app = DesignApp::new(Session::new(), Services::default());
         let r = app.open_dropped(&path.to_string_lossy());
         let _ = std::fs::remove_file(&path);
@@ -2028,7 +2028,7 @@ mod tests {
 
     #[test]
     fn file_open_failures_show_an_alert() {
-        let path = unreadable_file("open.designcraft");
+        let path = unreadable_file("open.designz");
         let picked = path.to_string_lossy().to_string();
         let services = Services { pick_open: Some(Box::new(move |_| Some(picked.clone()))), ..Default::default() };
         let mut app = DesignApp::new(Session::new(), services);
@@ -2045,11 +2045,11 @@ mod tests {
     #[test]
     fn other_command_errors_stay_in_the_status_line() {
         let mut app = DesignApp::new(Session::new(), Services::default());
-        assert!(app.run("file.open", json!({"path": "/nonexistent/x.designcraft"})).is_err());
+        assert!(app.run("file.open", json!({"path": "/nonexistent/x.designz"})).is_err());
         assert!(app.ui.dialog.is_none(), "a scripted file.open doesn't raise an alert");
         assert!(!app.ui.status.is_empty());
         // The control channel's app.open answers with the error; no alert waits for a click.
-        let (req, _rx) = control::ControlRequest::new("app.open", json!({"path": "/nonexistent/x.designcraft"}));
+        let (req, _rx) = control::ControlRequest::new("app.open", json!({"path": "/nonexistent/x.designz"}));
         let control::Outcome::Done(r) = control::handle(&mut app, &egui::Context::default(), &req) else { panic!("app.open answers") };
         assert_eq!(r["ok"], json!(false), "{r}");
         assert!(app.ui.dialog.is_none(), "a control-channel app.open doesn't raise an alert");
@@ -2069,7 +2069,7 @@ mod import_warning_tests {
         let spread = r#"<idPkg:Spread xmlns:idPkg="http://ns.adobe.com/AdobeInDesign/idml/1.0/packaging"><Spread Self="s"><Page Self="p" GeometricBounds="0 0 100 100" ItemTransform="1 0 0 1 0 0"/><Rectangle Self="r" ItemTransform="1 0 0 1 0 0"/></Spread></idPkg:Spread>"#;
         let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
         let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
-        for (name, text) in [("mimetype", designcraft_idml::MIMETYPE), ("designmap.xml", &map), ("Spreads/one.xml", spread)] {
+        for (name, text) in [("mimetype", designz_idml::MIMETYPE), ("designmap.xml", &map), ("Spreads/one.xml", spread)] {
             zip.start_file(name, options).unwrap();
             zip.write_all(text.as_bytes()).unwrap();
         }
@@ -2107,14 +2107,14 @@ mod import_warning_tests {
     fn byte_open_reports_partial_import_warnings_without_losing_documents() {
         let mut app = app();
         let result =
-            app.open_file("file.openBytes", json!({"name": "partial.idml", "base64": designcraft_engine::cmd::base64_encode(&idml(true))})).unwrap();
+            app.open_file("file.openBytes", json!({"name": "partial.idml", "base64": designz_engine::cmd::base64_encode(&idml(true))})).unwrap();
         assert_eq!(result["warnings"].as_array().unwrap().len(), 2);
         assert_partial_import_warning(&mut app, "partial.idml");
     }
 
     #[test]
     fn native_open_reports_partial_import_warnings_without_losing_documents() {
-        let path = std::env::temp_dir().join(format!("designcraft-partial-import-{}", std::process::id())).join("partial.idml");
+        let path = std::env::temp_dir().join(format!("designz-partial-import-{}", std::process::id())).join("partial.idml");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, idml(true)).unwrap();
         let picked = path.to_string_lossy().to_string();
@@ -2140,7 +2140,7 @@ mod import_warning_tests {
     fn complete_import_does_not_show_a_warning() {
         let mut app = app();
         let result = app
-            .open_file("file.openBytes", json!({"name": "complete.idml", "base64": designcraft_engine::cmd::base64_encode(&idml(false))}))
+            .open_file("file.openBytes", json!({"name": "complete.idml", "base64": designz_engine::cmd::base64_encode(&idml(false))}))
             .unwrap();
         assert_eq!(result["warnings"], json!([]));
         assert!(app.ui.dialog.is_none());
@@ -2311,9 +2311,9 @@ mod browser_import_tests {
         let mut source = Session::new();
         source.execute("file.new", &json!({"title": "source"})).unwrap();
         source.execute("frame.create", &json!({"rect": [10, 10, 50, 50], "content": "text", "text": "placed"})).unwrap();
-        let native = designcraft_engine::cmd::to_bytes(&source.doc().unwrap().doc);
-        let idml = designcraft_idml::export_idml(&source.doc().unwrap().doc);
-        for (name, bytes) in [("source.designcraft", native), ("source.idml", idml)] {
+        let native = designz_engine::cmd::to_bytes(&source.doc().unwrap().doc);
+        let idml = designz_idml::export_idml(&source.doc().unwrap().doc);
+        for (name, bytes) in [("source.designz", native), ("source.idml", idml)] {
             let mut app = app();
             let request = app.import_request("place");
             deliver(&mut app, request, name, bytes.clone());
@@ -2348,8 +2348,8 @@ mod browser_import_tests {
         assert!(app.pending_pdf.is_none());
         assert!(app.session.documents()[1].doc.assets.is_empty());
         let exported = app.run("file.exportPdf", json!({})).unwrap();
-        let exported = designcraft_engine::cmd::base64_decode(exported["base64"].as_str().unwrap());
-        let pixels = designcraft_render::render_pdf_page(&exported, 0, 400).unwrap();
+        let exported = designz_engine::cmd::base64_decode(exported["base64"].as_str().unwrap());
+        let pixels = designz_render::render_pdf_page(&exported, 0, 400).unwrap();
         assert!(pixels.data().iter().filter(|p| p.g > 240 && p.r < 10 && p.b < 10).count() > 1000);
         assert_eq!(pixels.data().iter().filter(|p| p.r > 240 && p.g < 10 && p.b < 10).count(), 0);
     }
@@ -2381,9 +2381,9 @@ mod browser_import_tests {
     #[test]
     fn drop_routing_and_nonlayout_open_remain_compatible() {
         let mut app = app();
-        let native = designcraft_engine::cmd::to_bytes(&app.session.doc().unwrap().doc);
+        let native = designz_engine::cmd::to_bytes(&app.session.doc().unwrap().doc);
         let request = app.import_request("drop");
-        deliver(&mut app, request, "document.designcraft", native);
+        deliver(&mut app, request, "document.designz", native);
         assert_eq!(app.session.documents().len(), 2);
         let request = app.import_request("drop");
         app.run("file.activate", json!({"index": 0})).unwrap();
@@ -2403,7 +2403,7 @@ mod browser_import_tests {
         source.execute("file.new", &json!({})).unwrap();
         source.execute("swatch.create", &json!({"name": "Import Teal", "color": "#108080"})).unwrap();
         let data = source.execute("swatch.save", &json!({"names": ["Import Teal"]})).unwrap();
-        let bytes = designcraft_engine::cmd::base64_decode(data["base64"].as_str().unwrap());
+        let bytes = designz_engine::cmd::base64_decode(data["base64"].as_str().unwrap());
         for (purpose, name) in [("swatches", "picker-file"), ("drop", "palette.ase")] {
             let mut app = app();
             let request = app.import_request(purpose);
@@ -2418,7 +2418,7 @@ mod browser_import_tests {
     #[test]
     fn native_pdf_dialog_keeps_path_and_uid_at_confirmation() {
         let mut app = app();
-        let path = std::env::temp_dir().join(format!("designcraft-native-import-{}-{}.pdf", std::process::id(), app.session.doc().unwrap().uid));
+        let path = std::env::temp_dir().join(format!("designz-native-import-{}-{}.pdf", std::process::id(), app.session.doc().unwrap().uid));
         std::fs::write(&path, pdf()).unwrap();
         let pick_path = path.to_string_lossy().to_string();
         app.services.pick_open = Some(Box::new(move |_| Some(pick_path.clone())));

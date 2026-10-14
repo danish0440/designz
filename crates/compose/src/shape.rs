@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use designcraft_doc::{Capitalization, CharProps, Kerning, Leading, Position, Story, Styles, story};
-use designcraft_fonts::{FaceRef, Feature, FontFace, ScopedFonts, ShapedGlyph, feature};
+use designz_doc::{Capitalization, CharProps, Kerning, Leading, Position, Story, Styles, story};
+use designz_fonts::{FaceRef, Feature, FontFace, ScopedFonts, ShapedGlyph, feature};
 
 use crate::RunStyle;
 
@@ -55,16 +55,16 @@ pub struct Glyph {
     pub break_after: Option<bool>,
     pub cjk_hang: f64,
     pub ideographic_space_elastic: bool,
-    pub character_alignment: designcraft_doc::cjk::CharacterAlignment,
-    pub leading_model: designcraft_doc::cjk::LeadingModel,
-    pub character_direction: designcraft_doc::arabic::CharacterDirection,
+    pub character_alignment: designz_doc::cjk::CharacterAlignment,
+    pub leading_model: designz_doc::cjk::LeadingModel,
+    pub character_direction: designz_doc::arabic::CharacterDirection,
     pub display_char: char,
     pub bidi_offset: usize,
     pub bidi_end: usize,
     pub allow_kashidas: bool,
     pub safe_tatweel_before: bool,
     pub shaping_rtl: bool,
-    /// The character's language as a BCP 47 tag ([`designcraft_doc::language_tag`]).
+    /// The character's language as a BCP 47 tag ([`designz_doc::language_tag`]).
     pub lang: Option<&'static str>,
     /// Upright in a vertical frame: shaped top to bottom (`adv` is its vertical advance) and hung
     /// from its vertical origin on the line's centre (see [`crate::PlacedGlyph::vertical_xf`]).
@@ -102,7 +102,7 @@ pub struct SubstCtx {
     /// Footnote reference labels by story byte of the reference character.
     pub notes: HashMap<usize, String>,
     /// Footnote reference formatting: position and character style (`None` = the text's).
-    pub note_position: designcraft_doc::Position,
+    pub note_position: designz_doc::Position,
     pub note_style: Option<String>,
     /// Cross-reference texts by story byte of the cross-reference mark.
     pub xrefs: HashMap<usize, String>,
@@ -163,9 +163,9 @@ impl StyleTable<'_> {
             skew: p.skew,
             size: p.size,
             missing_font: *self.missing.entry(p.font_family.clone()).or_insert_with(|| !p.font_family.is_empty() && !db.has_family(&p.font_family)),
-            custom_tracking: p.tracking.abs() > 1e-9 || matches!(p.kerning, designcraft_doc::Kerning::Manual(_)),
+            custom_tracking: p.tracking.abs() > 1e-9 || matches!(p.kerning, designz_doc::Kerning::Manual(_)),
             condition: p.conditions.first().cloned(),
-            inserted: p.change == designcraft_doc::ChangeMark::Inserted,
+            inserted: p.change == designz_doc::ChangeMark::Inserted,
             xml_tag: (!p.xml_tag.is_empty()).then(|| p.xml_tag.clone()),
             ruby: (!p.ruby.is_empty()).then(|| p.ruby.clone()),
             kenten: p.kenten,
@@ -205,8 +205,8 @@ pub(crate) fn shape_para(
     auto_leading: TypeEnv,
     sub: &SubstCtx,
     table: &mut StyleTable<'_>,
-    nested: &[designcraft_doc::NestedStyle],
-    grep: &[designcraft_doc::GrepStyle],
+    nested: &[designz_doc::NestedStyle],
+    grep: &[designz_doc::GrepStyle],
     lines: &[(std::ops::Range<usize>, String)],
     drop: (usize, &str),
 ) -> ShapedPara {
@@ -219,15 +219,15 @@ pub(crate) fn shape_para(
     // stores it in). Set (`[None]` included), it restyles that entry; a real one stands in for a
     // missing entry. Either way the nested styles after it start after the drop cap.
     let set = Some(drop.1).filter(|s| !s.is_empty());
-    let cap_style = set.filter(|s| *s != designcraft_doc::NO_CHAR_STYLE);
-    let with_cap: Vec<designcraft_doc::NestedStyle>;
+    let cap_style = set.filter(|s| *s != designz_doc::NO_CHAR_STYLE);
+    let with_cap: Vec<designz_doc::NestedStyle>;
     let nested = match set {
-        Some(s) if nested.first().is_some_and(designcraft_doc::NestedStyle::is_drop_cap) => {
-            with_cap = std::iter::once(designcraft_doc::NestedStyle::drop_cap(s)).chain(nested.iter().skip(1).cloned()).collect();
+        Some(s) if nested.first().is_some_and(designz_doc::NestedStyle::is_drop_cap) => {
+            with_cap = std::iter::once(designz_doc::NestedStyle::drop_cap(s)).chain(nested.iter().skip(1).cloned()).collect();
             &with_cap[..]
         }
         Some(s) if cap_style.is_some() && !nested.is_empty() => {
-            with_cap = std::iter::once(designcraft_doc::NestedStyle::drop_cap(s)).chain(nested.iter().cloned()).collect();
+            with_cap = std::iter::once(designz_doc::NestedStyle::drop_cap(s)).chain(nested.iter().cloned()).collect();
             &with_cap[..]
         }
         _ => nested,
@@ -241,7 +241,7 @@ pub(crate) fn shape_para(
         overlays.push((range.start..drop.0, s.to_string()));
     }
     // Each run, cut where nested / GREP styles start and end.
-    let mut segments: Vec<(usize, usize, Option<&str>, &designcraft_doc::CharFormat)> = Vec::new();
+    let mut segments: Vec<(usize, usize, Option<&str>, &designz_doc::CharFormat)> = Vec::new();
     for (rr, fmt) in story.runs() {
         let a = rr.start.max(range.start);
         let b = rr.end.min(range.end);
@@ -268,7 +268,7 @@ pub(crate) fn shape_para(
         let base;
         let para_chars = match overlay {
             Some(st) => {
-                base = styles.resolve_char(para_chars, &designcraft_doc::CharFormat { style: st.to_string(), over: Default::default() });
+                base = styles.resolve_char(para_chars, &designz_doc::CharFormat { style: st.to_string(), over: Default::default() });
                 &base
             }
             None => para_chars,
@@ -295,7 +295,7 @@ pub(crate) fn shape_para(
         let style = table.intern(db, &props);
         // A missing font's substitute stands in for the whole font: fallback fonts help it.
         let auto_leading = table.env_for(auto_leading, style);
-        let deleted = props.change == designcraft_doc::ChangeMark::Deleted;
+        let deleted = props.change == designz_doc::ChangeMark::Deleted;
         if deleted || (!props.conditions.is_empty() && props.conditions.iter().all(|c| sub.hidden_conditions.contains(c))) {
             // Hidden conditional text: zero-width, unbreakable, undrawn place-holders keep every
             // byte addressable (caret, selection) without taking space.
@@ -311,7 +311,7 @@ pub(crate) fn shape_para(
             }
             continue;
         }
-        let is_ref = |c: char| c == designcraft_doc::FOOTNOTE_REF || c == designcraft_doc::ENDNOTE_REF;
+        let is_ref = |c: char| c == designz_doc::FOOTNOTE_REF || c == designz_doc::ENDNOTE_REF;
         if !story.text[a..b].contains(is_ref) {
             shape_run(db, &story.text, a..b, &props, auto_leading, style, sub, &mut glyphs);
             continue;
@@ -327,7 +327,7 @@ pub(crate) fn shape_para(
         let rstyle = table.intern(db, &rprops);
         let renv = table.env_for(auto_leading, rstyle);
         let mut ef = fmt.clone();
-        ef.over.position = Some(designcraft_doc::Position::Superscript);
+        ef.over.position = Some(designz_doc::Position::Superscript);
         let eprops = styles.resolve_char(&resolved_base, &ef);
         let estyle = table.intern(db, &eprops);
         let eenv = table.env_for(auto_leading, estyle);
@@ -338,7 +338,7 @@ pub(crate) fn shape_para(
                 shape_run(db, &story.text, k..i, &props, auto_leading, style, sub, &mut glyphs);
             }
             let e = i + m.len();
-            if m.starts_with(designcraft_doc::ENDNOTE_REF) {
+            if m.starts_with(designz_doc::ENDNOTE_REF) {
                 shape_run(db, &story.text, i..e, &eprops, eenv, estyle, sub, &mut glyphs);
             } else {
                 shape_run(db, &story.text, i..e, &rprops, renv, rstyle, sub, &mut glyphs);
@@ -443,7 +443,7 @@ fn is_mark(c: char) -> bool {
     unicode_bidi::bidi_class(c) == unicode_bidi::BidiClass::NSM || matches!(c, '\u{200C}' | '\u{200D}')
 }
 
-fn composite_props(db: &ScopedFonts<'_>, base: &CharProps, entry: Option<&designcraft_doc::cjk::CompositeFontEntry>) -> CharProps {
+fn composite_props(db: &ScopedFonts<'_>, base: &CharProps, entry: Option<&designz_doc::cjk::CompositeFontEntry>) -> CharProps {
     let mut p = base.clone();
     if let Some(e) = entry {
         p.font_family.clone_from(&e.family);
@@ -482,7 +482,7 @@ fn shape_run(
         if p.tsume > 0.0 && !g.ch.is_whitespace() {
             let outline = db.outline(&g.face, g.gid);
             if !outline.elements().is_empty() {
-                let bounds = designcraft_geom::Shape::bounding_box(&*outline);
+                let bounds = designz_geom::Shape::bounding_box(&*outline);
                 left = (g.dx + bounds.x0 * g.sx).clamp(0.0, g.adv);
                 right = (g.adv - g.dx - bounds.x1 * g.sx).clamp(0.0, g.adv - left);
             }
@@ -531,7 +531,7 @@ fn shape_run_raw(
     let primary = db.face(&p.font_family, &p.font_style);
     // The language picks the fallback for CJK characters the primary font lacks. Without
     // fallback, the primary font sets them: the shaper gives its .notdef (glyph 0).
-    let lang = designcraft_doc::language_tag(&p.language);
+    let lang = designz_doc::language_tag(&p.language);
     let fallback = |c: char| {
         if auto_leading.glyph_fallback { db.fallback_for(c, primary.id(), lang).unwrap_or_else(|| primary.clone()) } else { primary.clone() }
     };
@@ -556,7 +556,7 @@ fn shape_run_raw(
         }
         // Digits drawn in another script (World-Ready Digits): each is set as its substitute.
         {
-            use designcraft_doc::Digits;
+            use designz_doc::Digits;
             let mode = if p.digits != Digits::Default {
                 p.digits
             } else {
@@ -590,18 +590,18 @@ fn shape_run_raw(
                 | story::INDENT_HERE
                 | story::RIGHT_INDENT_TAB
                 | story::TABLE_ANCHOR
-                | designcraft_doc::FOOTNOTE_REF
-                | designcraft_doc::ENDNOTE_REF
-                | designcraft_doc::NOTE_MARK
-                | designcraft_doc::XREF_MARK
-                | designcraft_doc::ANCHOR_MARK
-                | designcraft_doc::INDEX_MARK
-                | designcraft_doc::OBJECT_MARK
-        ) || designcraft_doc::vars::var_index(c).is_some();
+                | designz_doc::FOOTNOTE_REF
+                | designz_doc::ENDNOTE_REF
+                | designz_doc::NOTE_MARK
+                | designz_doc::XREF_MARK
+                | designz_doc::ANCHOR_MARK
+                | designz_doc::INDEX_MARK
+                | designz_doc::OBJECT_MARK
+        ) || designz_doc::vars::var_index(c).is_some();
         if special {
             flush(seg_start, i, &seg_face, out);
             seg_start = i + c.len_utf8();
-            if let Some(vi) = designcraft_doc::vars::var_index(c) {
+            if let Some(vi) = designz_doc::vars::var_index(c) {
                 match sub.vars.get(vi).filter(|v| !v.is_empty()) {
                     Some(v) => shape_segment(db, text, i..i + c.len_utf8(), Some(v), p, &primary, auto_leading, style, out, sub.vertical),
                     None => {
@@ -621,7 +621,7 @@ fn shape_run_raw(
                     };
                     shape_segment(db, text, i..i + c.len_utf8(), Some(&s), p, &primary, auto_leading, style, out, sub.vertical);
                 }
-                designcraft_doc::OBJECT_MARK => {
+                designz_doc::OBJECT_MARK => {
                     let mut g = control_glyph(&primary, p, auto_leading, style, i, c);
                     if let Some(o) = sub.objects.get(&i).filter(|o| !o.custom) {
                         let auto = matches!(p.leading, Leading::Auto);
@@ -649,7 +649,7 @@ fn shape_run_raw(
                     }
                     out.push(g);
                 }
-                designcraft_doc::XREF_MARK => match sub.xrefs.get(&i).filter(|t| !t.is_empty()) {
+                designz_doc::XREF_MARK => match sub.xrefs.get(&i).filter(|t| !t.is_empty()) {
                     Some(t) => shape_segment(db, text, i..i + c.len_utf8(), Some(t), p, &primary, auto_leading, style, out, sub.vertical),
                     None => {
                         let mut g = control_glyph(&primary, p, auto_leading, style, i, c);
@@ -657,7 +657,7 @@ fn shape_run_raw(
                         out.push(g);
                     }
                 },
-                designcraft_doc::FOOTNOTE_REF | designcraft_doc::ENDNOTE_REF => {
+                designz_doc::FOOTNOTE_REF | designz_doc::ENDNOTE_REF => {
                     let s = sub.notes.get(&i).map_or("#", String::as_str);
                     shape_segment(db, text, i..i + c.len_utf8(), Some(s), p, &primary, auto_leading, style, out, sub.vertical);
                 }
@@ -667,8 +667,8 @@ fn shape_run_raw(
                     if c == '\t'
                         || c == story::RIGHT_INDENT_TAB
                         || c == story::TABLE_ANCHOR
-                        || c == designcraft_doc::ANCHOR_MARK
-                        || c == designcraft_doc::INDEX_MARK
+                        || c == designz_doc::ANCHOR_MARK
+                        || c == designz_doc::INDEX_MARK
                     {
                         g.adv = 0.0;
                     }
@@ -725,16 +725,16 @@ fn shape_cached(
     vertical: bool,
     (before, after): (&str, &str),
 ) -> Vec<ShapedGlyph> {
-    use designcraft_fonts::ShapeContext;
+    use designz_fonts::ShapeContext;
     let map = |c: char| if caps { c.to_uppercase().next().unwrap_or(c) } else { c };
     let shape = |s: &str, context: ShapeContext<'_>| {
         if vertical {
-            designcraft_fonts::shape_vertical(face, s, feats, map, context)
+            designz_fonts::shape_vertical(face, s, feats, map, context)
         } else {
-            designcraft_fonts::shape_with_context(face, s, feats, map, context)
+            designz_fonts::shape_with_context(face, s, feats, map, context)
         }
     };
-    if src.len() < 2 || !src.contains(' ') || src.chars().any(designcraft_fonts::is_rtl) {
+    if src.len() < 2 || !src.contains(' ') || src.chars().any(designz_fonts::is_rtl) {
         return shape(src, ShapeContext { before, after, language: lang });
     }
     let words = word_map((face.id(), vertical, caps, format!("{feats:?}"), lang));
@@ -783,13 +783,13 @@ fn metrics(face: &FontFace, p: &CharProps, auto_leading: TypeEnv) -> (f64, f64, 
 #[derive(Clone, Copy, Debug)]
 pub struct TypeEnv {
     pub auto_leading: f64,
-    pub adv: designcraft_doc::AdvancedType,
+    pub adv: designz_doc::AdvancedType,
     /// Characters the font lacks are drawn from fallback fonts (else as its .notdef glyph).
     pub glyph_fallback: bool,
 }
 
 /// Synthesised super/subscript: size and shift from Advanced Type (percent of the font size).
-fn effective_size(p: &CharProps, adv: &designcraft_doc::AdvancedType) -> (f64, f64) {
+fn effective_size(p: &CharProps, adv: &designz_doc::AdvancedType) -> (f64, f64) {
     match p.position {
         Position::Superscript => (p.size * adv.superscript_size / 100.0, p.baseline_shift + p.size * adv.superscript_position / 100.0),
         Position::Subscript => (p.size * adv.subscript_size / 100.0, p.baseline_shift - p.size * adv.subscript_position / 100.0),
@@ -836,7 +836,7 @@ fn control_glyph(face: &Arc<FontFace>, p: &CharProps, auto_leading: TypeEnv, sty
         allow_kashidas: p.allow_kashidas,
         safe_tatweel_before: false,
         shaping_rtl: false,
-        lang: designcraft_doc::language_tag(&p.language),
+        lang: designz_doc::language_tag(&p.language),
         upright: false,
         list_label: false,
     }
@@ -865,14 +865,14 @@ fn shape_segment(
     let feats = features_for(p);
     // Upright in vertical text, Horizontal Kana takes the vertical kana alternates instead.
     let mut upright_feats = feats.clone();
-    if vertical && designcraft_doc::otf::is_on(&p.otf_features, "hkna") {
+    if vertical && designz_doc::otf::is_on(&p.otf_features, "hkna") {
         upright_feats.extend(feature("-hkna"));
         upright_feats.extend(feature("vkna"));
     }
     let space = face.advance(face.glyph_for(' ')) * k * hs;
     // The language picks the font's localized forms (`locl`); the text around the run lets
     // letters join across a change of style.
-    let lang = designcraft_doc::language_tag(&p.language);
+    let lang = designz_doc::language_tag(&p.language);
     // Vertical frames: upright runs top to bottom, the rest (turned as a whole) horizontally.
     // Tate-chu-yoko is set across the line, so it stays horizontal.
     let mut shaped: Vec<ShapedGlyph> = Vec::new();
@@ -984,7 +984,7 @@ fn upright_runs(src: &str, vertical: bool) -> Vec<(std::ops::Range<usize>, bool)
 
 /// A hyphen glyph in the face/size of `g`, placed after it (zero source length).
 pub(crate) fn hyphen_after(g: &Glyph) -> Glyph {
-    let gid = designcraft_fonts::first_glyph(&g.face, &['-', '\u{2010}']);
+    let gid = designz_fonts::first_glyph(&g.face, &['-', '\u{2010}']);
     let mut h = g.clone();
     h.gid = gid;
     h.adv = g.face.advance(gid) * g.sx;

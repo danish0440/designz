@@ -3,7 +3,7 @@
 //! closing a document removes its file; after a crash `file.recovery.open` reopens what was left
 //! there as unsaved documents that remember where they were saved.
 //!
-//! A recovery entry is `<uid>.designcraft` (the document) plus `<uid>.json` (`{"path", "title",
+//! A recovery entry is `<uid>.designz` (the document) plus `<uid>.json` (`{"path", "title",
 //! "saved"}`: the original file, the title, and when it was written).
 //!
 //! Document uids start at 1 in every process, so each running app keeps its entries in a folder
@@ -28,12 +28,12 @@ use crate::{DocState, EngineError, Result, Session};
 pub fn default_dir() -> Option<PathBuf> {
     let home = std::env::var_os("HOME").map(PathBuf::from);
     if cfg!(target_os = "macos") {
-        return home.map(|h| h.join("Library/Application Support/DesignCraft/Recovery"));
+        return home.map(|h| h.join("Library/Application Support/DesignZ/Recovery"));
     }
     if cfg!(target_os = "windows") {
-        return std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("DesignCraft").join("Recovery"));
+        return std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("DesignZ").join("Recovery"));
     }
-    std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).or_else(|| home.map(|h| h.join(".local/share"))).map(|d| d.join("designcraft/recovery"))
+    std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).or_else(|| home.map(|h| h.join(".local/share"))).map(|d| d.join("designz/recovery"))
 }
 
 /// This process's folder in a recovery folder, with the lock that says it is still running.
@@ -298,7 +298,7 @@ fn remove_emptied(dir: &Path) {
         let name = name.to_string_lossy();
         let numbered = path.file_stem().and_then(|s| s.to_str()).is_some_and(|s| s.parse::<u64>().is_ok());
         // Metadata whose document has gone, and a file a crash left half written.
-        if (numbered && name.ends_with(".json")) || (name.starts_with(".designcraft-recovery-") && name.ends_with(".tmp")) {
+        if (numbered && name.ends_with(".json")) || (name.starts_with(".designz-recovery-") && name.ends_with(".tmp")) {
             left.push(path);
         } else if name != LOCK {
             return;
@@ -326,7 +326,7 @@ fn move_entries(from: &Path, own: &Path) {
 }
 
 fn files(dir: &Path, uid: u64) -> (PathBuf, PathBuf) {
-    (dir.join(format!("{uid}.designcraft")), dir.join(format!("{uid}.json")))
+    (dir.join(format!("{uid}.designz")), dir.join(format!("{uid}.json")))
 }
 
 /// Remove a document's recovery entry (it was saved or closed).
@@ -433,14 +433,14 @@ pub(crate) fn save_tracked(s: &mut Session, dir: &Path) -> Result<usize> {
         }
         let Some(document) = s.docs.get_mut(index) else { continue };
         let (doc, meta) = files(dir, document.uid);
-        let bytes = designcraft_format::save(document.preview_stash.as_deref().unwrap_or(document.doc.as_ref()))
+        let bytes = designz_format::save(document.preview_stash.as_deref().unwrap_or(document.doc.as_ref()))
             .map_err(|e| EngineError::Other(e.to_string()))?;
         write_recovery_file(&doc, &bytes)?;
         // The primary is useful even if optional metadata fails next. Track it immediately.
         if !has_checkpoint(document, dir) {
             document.recovery_entries.push((dir.to_path_buf(), document.uid));
         }
-        let metadata = json!({"path": document.path, "title": document.title(), "saved": designcraft_doc::vars::now()});
+        let metadata = json!({"path": document.path, "title": document.title(), "saved": designz_doc::vars::now()});
         write_recovery_file(&meta, metadata.to_string().as_bytes())?;
         n += 1;
     }
@@ -450,9 +450,9 @@ pub(crate) fn save_tracked(s: &mut Session, dir: &Path) -> Result<usize> {
 /// Publish a document's recovery entry before its optional metadata.
 fn write_entry(dir: &Path, d: &DocState) -> Result<()> {
     let (doc, meta) = files(dir, d.uid);
-    let bytes = designcraft_format::save(d.preview_stash.as_deref().unwrap_or(d.doc.as_ref())).map_err(|e| EngineError::Other(e.to_string()))?;
+    let bytes = designz_format::save(d.preview_stash.as_deref().unwrap_or(d.doc.as_ref())).map_err(|e| EngineError::Other(e.to_string()))?;
     write_recovery_file(&doc, &bytes)?;
-    let metadata = json!({"path": d.path, "title": d.title(), "saved": designcraft_doc::vars::now()});
+    let metadata = json!({"path": d.path, "title": d.title(), "saved": designz_doc::vars::now()});
     write_recovery_file(&meta, metadata.to_string().as_bytes())
 }
 
@@ -511,7 +511,7 @@ fn publish_recovery_file(path: &Path, bytes: &[u8], replace: bool) -> Result<()>
     };
     validate_recovery_dir(dir)?;
     let mut tmp = tempfile::Builder::new()
-        .prefix(".designcraft-recovery-")
+        .prefix(".designz-recovery-")
         .suffix(".tmp")
         .tempfile_in(dir)
         .map_err(|e| EngineError::Other(format!("{}: {e}", path.display())))?;
@@ -605,7 +605,7 @@ fn occupied_uids(dir: &Path) -> Result<std::collections::HashSet<u64>> {
     for entry in entries {
         let entry = entry.map_err(|e| EngineError::Other(format!("{}: {e}", dir.display())))?;
         let path = entry.path();
-        if matches!(path.extension().and_then(|s| s.to_str()), Some("json" | "designcraft"))
+        if matches!(path.extension().and_then(|s| s.to_str()), Some("json" | "designz"))
             && let Some(uid) = path.file_stem().and_then(|s| s.to_str()).and_then(|s| s.parse().ok())
         {
             ids.insert(uid);
@@ -635,7 +635,7 @@ pub fn list(dir: &Path) -> Vec<(u64, Value)> {
     let Ok(rd) = std::fs::read_dir(dir) else { return out };
     for e in rd.flatten() {
         let p = e.path();
-        if p.extension().and_then(|x| x.to_str()) != Some("designcraft") {
+        if p.extension().and_then(|x| x.to_str()) != Some("designz") {
             continue;
         }
         let Some(uid) = p.file_stem().and_then(|s| s.to_str()).and_then(|s| s.parse::<u64>().ok()) else { continue };
@@ -716,13 +716,13 @@ fn open_with_publisher(s: &mut Session, dir: &Path, mut publish: impl FnMut(&Pat
         // clean up every snapshot this document actually owns rather than an unrelated same uid.
         if let Some(state) = s.docs.get_mut(index) {
             let (document, metadata) = files(&destination, state.uid);
-            let published = designcraft_format::save(state.doc.as_ref())
+            let published = designz_format::save(state.doc.as_ref())
                 .map_err(|e| EngineError::Other(e.to_string()))
                 .and_then(|bytes| publish(&document, &bytes));
             match published {
                 Ok(()) => {
                     state.recovery_entries.push((destination.clone(), state.uid));
-                    let meta = json!({"path": state.path, "title": state.title(), "saved": designcraft_doc::vars::now()});
+                    let meta = json!({"path": state.path, "title": state.title(), "saved": designz_doc::vars::now()});
                     match publish(&metadata, meta.to_string().as_bytes()) {
                         Ok(()) => {
                             discard(dir, uid);
@@ -772,7 +772,7 @@ mod tests {
         // Saving a document drops its entry.
         s.recovery_dir = Some(dir.clone());
         assert_eq!(save(&s, &dir).unwrap(), 1);
-        let path = dir.join("saved.designcraft");
+        let path = dir.join("saved.designz");
         s.execute("file.saveAs", &json!({"path": path.to_string_lossy()})).unwrap();
         assert!(list(&dir).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
@@ -810,7 +810,7 @@ mod tests {
     fn open_with_failed_republication(s: &mut Session, dir: &Path) -> Result<Vec<usize>> {
         let mut attempts = 0;
         let opened = open_with_publisher(s, dir, |path, bytes| {
-            assert_eq!(path.extension().and_then(|extension| extension.to_str()), Some("designcraft"));
+            assert_eq!(path.extension().and_then(|extension| extension.to_str()), Some("designz"));
             std::fs::create_dir(path).unwrap();
             let result = publish_recovery_file(path, bytes, false);
             std::fs::remove_dir(path).unwrap();
@@ -908,11 +908,11 @@ mod tests {
 
         assert!(save(&dirty_session(), &link).is_err());
         assert!(std::fs::read_dir(&destination).unwrap().next().is_none());
-        std::fs::write(destination.join("7.designcraft"), b"unchanged").unwrap();
+        std::fs::write(destination.join("7.designz"), b"unchanged").unwrap();
         std::fs::write(destination.join("7.json"), b"{}").unwrap();
         assert!(list(&link).is_empty());
         discard(&link, 7);
-        assert_eq!(std::fs::read(destination.join("7.designcraft")).unwrap(), b"unchanged");
+        assert_eq!(std::fs::read(destination.join("7.designz")).unwrap(), b"unchanged");
         assert!(open(&mut Session::new(), &link).is_err());
         assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
     }
@@ -987,7 +987,7 @@ mod tests {
         let checkpoint = files(root.path(), live_uid).0;
         let original = std::fs::read(&checkpoint).unwrap();
         session.execute("file.activate", &json!({"index": 0})).unwrap();
-        session.execute("file.saveAs", &json!({"path": root.path().join("saved-other.designcraft").to_string_lossy()})).unwrap();
+        session.execute("file.saveAs", &json!({"path": root.path().join("saved-other.designz").to_string_lossy()})).unwrap();
         assert_eq!(std::fs::read(checkpoint).unwrap(), original);
     }
 
@@ -996,8 +996,8 @@ mod tests {
         let (mut session, root, live_uid) = failed_republication_session();
         let checkpoint = files(root.path(), live_uid).0;
         let original = std::fs::read(&checkpoint).unwrap();
-        let saved = root.path().join("saved-other.designcraft");
-        std::fs::write(&saved, designcraft_format::save(&session.docs[0].doc).unwrap()).unwrap();
+        let saved = root.path().join("saved-other.designz");
+        std::fs::write(&saved, designz_format::save(&session.docs[0].doc).unwrap()).unwrap();
         session.docs[0].path = Some(saved.to_string_lossy().into_owned());
         session.execute("file.activate", &json!({"index": 0})).unwrap();
         session.execute("frame.create", &json!({"rect": [0,0,100,100]})).unwrap();
@@ -1008,7 +1008,7 @@ mod tests {
     #[test]
     fn retained_source_provenance_is_consumed_before_its_uid_is_reused() {
         let (mut session, root, live_uid) = failed_republication_session();
-        session.execute("file.saveAs", &json!({"path": root.path().join("saved.designcraft").to_string_lossy()})).unwrap();
+        session.execute("file.saveAs", &json!({"path": root.path().join("saved.designz").to_string_lossy()})).unwrap();
         session.execute("file.activate", &json!({"index": 0})).unwrap();
         session.execute("frame.create", &json!({"rect": [0,0,100,100], "content": "text", "text": "other live work"})).unwrap();
         session.execute("file.recovery.save", &json!({"dir": root.path().to_string_lossy()})).unwrap();
@@ -1068,8 +1068,8 @@ mod tests {
     #[test]
     #[ignore = "subprocess helper, executed by the restart recovery regression tests"]
     fn restart_recovery_child() {
-        let source = PathBuf::from(std::env::var("DESIGNCRAFT_TEST_RECOVERY_SOURCE").unwrap());
-        let mode = std::env::var("DESIGNCRAFT_TEST_RECOVERY_MODE").unwrap();
+        let source = PathBuf::from(std::env::var("DESIGNZ_TEST_RECOVERY_SOURCE").unwrap());
+        let mode = std::env::var("DESIGNZ_TEST_RECOVERY_MODE").unwrap();
         if mode == "occupied_destination" {
             let owned_root = tempfile::tempdir().unwrap();
             let destination = run_dir(owned_root.path()).unwrap();
@@ -1087,7 +1087,7 @@ mod tests {
             assert!(session.docs.iter().all(|document| document.uid != 3));
             assert_eq!(persisted_texts(&destination), ["already in destination", "restart first", "restart second"]);
             assert!(list(&source).is_empty());
-            session.execute("file.saveAs", &json!({"path": source.join("saved.designcraft").to_string_lossy()})).unwrap();
+            session.execute("file.saveAs", &json!({"path": source.join("saved.designz").to_string_lossy()})).unwrap();
             session.execute("file.close", &json!({"index": opened[0]})).unwrap();
             assert_eq!(list(&destination).len(), 1);
             assert_eq!(std::fs::read(existing_doc).unwrap(), doc_bytes);
@@ -1129,9 +1129,9 @@ mod tests {
                 assert!(list(&source).is_empty());
             }
             // A copy does not consume recovery. A successful Save and a Close do.
-            session.execute("file.saveACopy", &json!({"path": source.join("copy.designcraft").to_string_lossy()})).unwrap();
+            session.execute("file.saveACopy", &json!({"path": source.join("copy.designz").to_string_lossy()})).unwrap();
             assert_eq!(list(&destination).len(), 2);
-            session.execute("file.saveAs", &json!({"path": source.join("saved.designcraft").to_string_lossy()})).unwrap();
+            session.execute("file.saveAs", &json!({"path": source.join("saved.designz").to_string_lossy()})).unwrap();
             assert_eq!(list(&destination).len(), 1);
             if mode == "revert" {
                 session.execute("frame.create", &json!({"rect": [0, 0, 100, 100], "content": "text", "text": "after saving"})).unwrap();
@@ -1157,8 +1157,8 @@ mod tests {
         }
         let output = std::process::Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "recovery::tests::restart_recovery_child", "--ignored", "--nocapture"])
-            .env("DESIGNCRAFT_TEST_RECOVERY_SOURCE", source.path())
-            .env("DESIGNCRAFT_TEST_RECOVERY_MODE", mode)
+            .env("DESIGNZ_TEST_RECOVERY_SOURCE", source.path())
+            .env("DESIGNZ_TEST_RECOVERY_MODE", mode)
             .output()
             .unwrap();
         assert!(
@@ -1331,7 +1331,7 @@ mod tests {
         dir
     }
 
-    /// Every process numbers its first document 1: two running apps both wrote `1.designcraft`
+    /// Every process numbers its first document 1: two running apps both wrote `1.designz`
     /// into the one recovery folder, and only the document written last was recovered.
     #[test]
     fn documents_of_two_apps_that_ended_are_both_recovered() {
@@ -1394,7 +1394,7 @@ mod tests {
     fn an_unreadable_entry_of_a_run_that_ended_is_kept() {
         let root = tempfile::tempdir().unwrap();
         let left = run_left(root.path(), "run-7-0", "readable", 1);
-        std::fs::write(left.join("2.designcraft"), b"not a document").unwrap();
+        std::fs::write(left.join("2.designz"), b"not a document").unwrap();
         let own = run_dir(root.path()).unwrap();
         let mut s = Session::new();
         assert_eq!(open(&mut s, &own).unwrap().len(), 1);
@@ -1431,7 +1431,7 @@ mod tests {
     #[test]
     fn a_document_taken_over_remembers_its_file() {
         let root = tempfile::tempdir().unwrap();
-        let file = root.path().join("layout.designcraft");
+        let file = root.path().join("layout.designz");
         let recovery = root.path().join("recovery");
         let left = recovery.join("run-7-0");
         std::fs::create_dir_all(&left).unwrap();
@@ -1453,14 +1453,14 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let emptied = run_left(root.path(), "run-7-0", "moved", 1);
         std::fs::write(emptied.join("9.json"), b"{}").unwrap();
-        std::fs::write(emptied.join(".designcraft-recovery-abc.tmp"), b"half written").unwrap();
+        std::fs::write(emptied.join(".designz-recovery-abc.tmp"), b"half written").unwrap();
         let kept = run_left(root.path(), "run-8-0", "moved too", 1);
-        std::fs::write(kept.join("copy.designcraft"), b"a copy someone put here").unwrap();
+        std::fs::write(kept.join("copy.designz"), b"a copy someone put here").unwrap();
         let own = run_dir(root.path()).unwrap();
         let mut s = Session::new();
         assert_eq!(open(&mut s, &own).unwrap().len(), 2);
         assert!(!emptied.exists());
-        assert_eq!(std::fs::read(kept.join("copy.designcraft")).unwrap(), b"a copy someone put here");
+        assert_eq!(std::fs::read(kept.join("copy.designz")).unwrap(), b"a copy someone put here");
         assert!(kept.join(LOCK).exists(), "still the folder of a run that ended");
     }
 
@@ -1471,11 +1471,11 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let left = root.path().join(format!("run-{}-0", std::process::id()));
         std::fs::create_dir(&left).unwrap();
-        std::fs::write(left.join("1.designcraft"), b"left with no lock").unwrap();
+        std::fs::write(left.join("1.designz"), b"left with no lock").unwrap();
         let own = run_dir(root.path()).unwrap();
         assert_ne!(own, left);
         assert!(!left.join(LOCK).exists());
-        assert_eq!(std::fs::read(left.join("1.designcraft")).unwrap(), b"left with no lock");
+        assert_eq!(std::fs::read(left.join("1.designz")).unwrap(), b"left with no lock");
     }
 }
 
@@ -1490,7 +1490,7 @@ mod file_tests {
         let dir = std::env::temp_dir().join(format!("dc-recovery-corrupt-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("7.designcraft"), b"not a document").unwrap();
+        std::fs::write(dir.join("7.designz"), b"not a document").unwrap();
         std::fs::write(dir.join("7.json"), b"[1, 2]").unwrap();
         let mut s = Session::new();
         s.recovery_dir = Some(dir.clone());
@@ -1503,7 +1503,7 @@ mod file_tests {
     fn revert_and_save_a_copy() {
         let dir = std::env::temp_dir().join(format!("dc-revert-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let (a, copy) = (dir.join("a.designcraft"), dir.join("copy.designcraft"));
+        let (a, copy) = (dir.join("a.designz"), dir.join("copy.designz"));
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         assert!(s.execute("file.revert", &json!({})).is_err(), "never saved");

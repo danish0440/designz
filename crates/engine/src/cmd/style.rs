@@ -1,7 +1,7 @@
 //! Paragraph / character styles and swatches.
 
-use designcraft_color::{Swatch, SwatchValue};
-use designcraft_doc::{CharAttrs, CharacterStyle, ParaAttrs, ParagraphStyle, Styles};
+use designz_color::{Swatch, SwatchValue};
+use designz_doc::{CharAttrs, CharacterStyle, ParaAttrs, ParagraphStyle, Styles};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, cmd, has_doc, has_text_or_frames, ok, str_param};
@@ -20,7 +20,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "{name, entries: [{name?, characters?, family, style?, relativeSize?, horizontalScale?, verticalScale?, baselineShift?, scaleOption?}]} — replaces a composite font definition; empty characters selects the base entry",
             has_doc,
             |s, p| {
-                let f: designcraft_doc::cjk::CompositeFont =
+                let f: designz_doc::cjk::CompositeFont =
                     serde_json::from_value(p.clone()).map_err(|e| bad("style.compositeFont.set", e.to_string()))?;
                 if f.name.trim().is_empty()
                     || f.entries.is_empty()
@@ -232,7 +232,7 @@ pub fn specs() -> Vec<CommandSpec> {
             let inks: Vec<Value> = d
                 .swatches
                 .iter()
-                .filter(|w| matches!(w.value, designcraft_color::swatch::SwatchValue::Color { color_type: designcraft_color::swatch::ColorType::Spot, .. }))
+                .filter(|w| matches!(w.value, designz_color::swatch::SwatchValue::Color { color_type: designz_color::swatch::ColorType::Spot, .. }))
                 .map(|w| {
                     let alias = d.inks.aliases.iter().find(|(a, _)| *a == w.name).map(|(_, t)| t.clone());
                     json!({"name": w.name, "process": d.inks.resolve(&w.name).1, "alias": alias})
@@ -261,7 +261,7 @@ pub fn specs() -> Vec<CommandSpec> {
                             d.swatch(n).is_some_and(|w| {
                                 matches!(
                                     w.value,
-                                    designcraft_color::swatch::SwatchValue::Color { color_type: designcraft_color::swatch::ColorType::Spot, .. }
+                                    designz_color::swatch::SwatchValue::Color { color_type: designz_color::swatch::ColorType::Spot, .. }
                                 )
                             })
                         };
@@ -324,7 +324,7 @@ pub fn specs() -> Vec<CommandSpec> {
                     for g in &mut d.color_groups {
                         g.swatches.retain(|w| !names.contains(w));
                     }
-                    d.color_groups.push(designcraft_doc::ColorGroup { name: name.clone(), swatches: names });
+                    d.color_groups.push(designz_doc::ColorGroup { name: name.clone(), swatches: names });
                     Ok(json!({"name": name}))
                 })
             }
@@ -442,12 +442,12 @@ fn create_para(s: &mut Session, p: &Value) -> Result<Value> {
         && let Ok(cur) = s.execute("type.selectionAttrs", &json!({}))
         && !cur.is_null()
     {
-        if let Ok(pp) = serde_json::from_value::<designcraft_doc::ParaProps>(cur["para"].clone()) {
+        if let Ok(pp) = serde_json::from_value::<designz_doc::ParaProps>(cur["para"].clone()) {
             let mut full = ParaProps_to_attrs(&pp);
             full.merge(&para);
             para = full;
         }
-        if let Ok(cp) = serde_json::from_value::<designcraft_doc::CharProps>(cur["chars"].clone()) {
+        if let Ok(cp) = serde_json::from_value::<designz_doc::CharProps>(cur["chars"].clone()) {
             let mut full = CharProps_to_attrs(&cp);
             full.merge(&chars);
             chars = full;
@@ -469,12 +469,12 @@ fn create_para(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 #[allow(non_snake_case)]
-fn ParaProps_to_attrs(p: &designcraft_doc::ParaProps) -> ParaAttrs {
-    designcraft_doc::ParaProps::common([p])
+fn ParaProps_to_attrs(p: &designz_doc::ParaProps) -> ParaAttrs {
+    designz_doc::ParaProps::common([p])
 }
 #[allow(non_snake_case)]
-fn CharProps_to_attrs(p: &designcraft_doc::CharProps) -> CharAttrs {
-    designcraft_doc::CharProps::common([p])
+fn CharProps_to_attrs(p: &designz_doc::CharProps) -> CharAttrs {
+    designz_doc::CharProps::common([p])
 }
 
 fn edit_para(s: &mut Session, p: &Value) -> Result<Value> {
@@ -509,7 +509,7 @@ fn edit_para(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 /// Rename a paragraph or character style everywhere it's used.
-fn rename_style(d: &mut designcraft_doc::Document, para: bool, from: &str, to: &str) {
+fn rename_style(d: &mut designz_doc::Document, para: bool, from: &str, to: &str) {
     let st = d.styles_mut();
     if para {
         for s in &mut st.paragraph {
@@ -595,7 +595,7 @@ fn group_styles(s: &mut Session, p: &Value) -> Result<Value> {
             }
             let base = n.rsplit('/').next().unwrap_or(n);
             let mut to = if group.is_empty() { base.to_string() } else { format!("{group}/{base}") };
-            let taken = |d: &designcraft_doc::Document, x: &str| {
+            let taken = |d: &designz_doc::Document, x: &str| {
                 if para { d.styles.para(x).is_some() } else { d.styles.character.iter().any(|c| c.name == x) }
             };
             if to != *n {
@@ -610,7 +610,7 @@ fn group_styles(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn delete_para(s: &mut Session, p: &Value) -> Result<Value> {
     let name = str_param(p, "name").unwrap_or("").to_string();
-    let repl = str_param(p, "replaceWith").unwrap_or(designcraft_doc::BASIC_PARAGRAPH).to_string();
+    let repl = str_param(p, "replaceWith").unwrap_or(designz_doc::BASIC_PARAGRAPH).to_string();
     if name.starts_with('[') {
         return Err(bad("style.paragraph.delete", "built-in styles can't be deleted"));
     }
@@ -652,7 +652,7 @@ fn create_char(s: &mut Session, p: &Value) -> Result<Value> {
         chars = captured;
     }
     // Based on [None] is based on nothing.
-    let based_on = str_param(p, "basedOn").filter(|b| *b != designcraft_doc::NO_CHAR_STYLE).map(str::to_string);
+    let based_on = str_param(p, "basedOn").filter(|b| *b != designz_doc::NO_CHAR_STYLE).map(str::to_string);
     s.edit(|d, _| {
         if let Some(b) = &based_on
             && d.styles.char_style(b).is_none()
@@ -667,7 +667,7 @@ fn create_char(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn edit_char(s: &mut Session, p: &Value) -> Result<Value> {
     let name = str_param(p, "name").ok_or_else(|| bad("style.character.edit", "missing name"))?.to_string();
-    if name == designcraft_doc::NO_CHAR_STYLE {
+    if name == designz_doc::NO_CHAR_STYLE {
         return Err(bad("style.character.edit", "[None] can't be edited"));
     }
     let chars: CharAttrs = attrs(p.get("chars"), |a: &mut CharAttrs, k, v| a.set_json(k, v))?;
@@ -682,7 +682,7 @@ fn edit_char(s: &mut Session, p: &Value) -> Result<Value> {
     let based: Option<Option<String>> = match p.get("basedOn") {
         None => None,
         Some(Value::Null) => Some(None),
-        Some(Value::String(b)) if b == designcraft_doc::NO_CHAR_STYLE => Some(None),
+        Some(Value::String(b)) if b == designz_doc::NO_CHAR_STYLE => Some(None),
         Some(Value::String(b)) => Some(Some(b.clone())),
         Some(_) => return Err(bad("style.character.edit", "`basedOn` is a style name or null")),
     };
@@ -721,7 +721,7 @@ fn create_swatch(s: &mut Session, p: &Value) -> Result<Value> {
     let color = parse_color(c).ok_or_else(|| bad("swatch.create", "bad color"))?;
     let spot = p.get("spot").and_then(Value::as_bool).unwrap_or(false);
     let name = str_param(p, "name").map(str::to_string).unwrap_or_else(|| match color {
-        designcraft_color::Color::Cmyk { c, m, y, k } => designcraft_color::swatch::cmyk_name(c, m, y, k),
+        designz_color::Color::Cmyk { c, m, y, k } => designz_color::swatch::cmyk_name(c, m, y, k),
         other => {
             let [r, g, b] = other.to_rgb();
             format!("R={} G={} B={}", (r * 255.0).round(), (g * 255.0).round(), (b * 255.0).round())
@@ -733,7 +733,7 @@ fn create_swatch(s: &mut Session, p: &Value) -> Result<Value> {
             name: name.clone(),
             value: SwatchValue::Color {
                 color,
-                color_type: if spot { designcraft_color::ColorType::Spot } else { designcraft_color::ColorType::Process },
+                color_type: if spot { designz_color::ColorType::Spot } else { designz_color::ColorType::Process },
             },
             locked: false,
             named: true,
@@ -743,8 +743,8 @@ fn create_swatch(s: &mut Session, p: &Value) -> Result<Value> {
     })
 }
 
-pub fn parse_color(v: &Value) -> Option<designcraft_color::Color> {
-    use designcraft_color::Color;
+pub fn parse_color(v: &Value) -> Option<designz_color::Color> {
+    use designz_color::Color;
     match v {
         Value::String(s) => Color::from_hex(s),
         // One scale per colour, not per component: {c: 0.7, y: 12.2} is C 0.7 %, Y 12.2 %. Only a colour whose
@@ -802,14 +802,14 @@ fn create_object(s: &mut Session, p: &Value) -> Result<Value> {
     let base = str_param(p, "name").unwrap_or("Object Style 1").to_string();
     let from_sel = p.get("fromSelection").and_then(Value::as_bool).unwrap_or(true);
     let src = if from_sel { s.doc()?.selection.items.first().and_then(|i| s.doc().ok()?.doc.item(*i).cloned()) } else { None };
-    let mut os = designcraft_doc::ObjectStyle::default();
+    let mut os = designz_doc::ObjectStyle::default();
     if let Some(it) = &src {
         os.fill = Some(it.fill.clone());
         os.stroke = Some(it.stroke.clone());
         os.text_frame = it.text_frame().map(|t| t.options.clone());
     }
     if let Some(sw) = str_param(p, "fill") {
-        os.fill = Some(designcraft_doc::Fill::swatch(sw));
+        os.fill = Some(designz_doc::Fill::swatch(sw));
     }
     if let Some(ps) = str_param(p, "paragraphStyle") {
         os.paragraph_style = Some(ps.to_string());
@@ -823,9 +823,9 @@ fn create_object(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 /// The swatch name of a colour value ("C=… M=… Y=… K=…" / "R=… G=… B=…").
-fn value_name(color: designcraft_color::Color) -> String {
+fn value_name(color: designz_color::Color) -> String {
     match color {
-        designcraft_color::Color::Cmyk { c, m, y, k } => designcraft_color::swatch::cmyk_name(c, m, y, k),
+        designz_color::Color::Cmyk { c, m, y, k } => designz_color::swatch::cmyk_name(c, m, y, k),
         other => {
             let [r, g, b] = other.to_rgb();
             format!("R={} G={} B={}", (r * 255.0).round(), (g * 255.0).round(), (b * 255.0).round())
@@ -839,7 +839,7 @@ fn load_swatches(s: &mut Session, p: &Value) -> Result<Value> {
         (Some(path), None) => std::fs::read(path).map_err(|e| bad("swatch.load", format!("{path}: {e}")))?,
         _ => return Err(bad("swatch.load", "give `path` or `base64`")),
     };
-    let incoming = designcraft_color::ase::read(&bytes).map_err(|e| bad("swatch.load", e.to_string()))?;
+    let incoming = designz_color::ase::read(&bytes).map_err(|e| bad("swatch.load", e.to_string()))?;
     let replace = p.get("replace").and_then(Value::as_bool).unwrap_or(false);
     s.edit(|d, _| {
         let (mut added, mut replaced) = (0, 0);
@@ -868,7 +868,7 @@ fn save_swatches(s: &mut Session, p: &Value) -> Result<Value> {
     let names: Option<Vec<String>> =
         p.get("names").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect());
     let chosen: Vec<Swatch> = d.swatches.iter().filter(|w| names.as_ref().is_none_or(|n| n.contains(&w.name))).cloned().collect();
-    let bytes = designcraft_color::ase::write(&chosen);
+    let bytes = designz_color::ase::write(&chosen);
     match str_param(p, "path") {
         Some(path) => {
             #[cfg(not(target_arch = "wasm32"))]
@@ -882,17 +882,17 @@ fn save_swatches(s: &mut Session, p: &Value) -> Result<Value> {
     }
 }
 
-fn gradient_json(name: &str, g: &designcraft_color::Gradient) -> Value {
+fn gradient_json(name: &str, g: &designz_color::Gradient) -> Value {
     let stops: Vec<Value> = g
         .stops
         .iter()
         .map(|s| json!({"location": (s.offset as f64 * 1000.0).round() / 10.0, "color": s.color.to_hex(), "opacity": (s.opacity * 100.0).round(), "midpoint": (s.midpoint * 100.0).round()}))
         .collect();
-    json!({"swatch": name, "kind": if g.kind == designcraft_color::GradientKind::Radial { "radial" } else { "linear" }, "stops": stops})
+    json!({"swatch": name, "kind": if g.kind == designz_color::GradientKind::Radial { "radial" } else { "linear" }, "stops": stops})
 }
 
 fn apply_gradient(s: &mut Session, p: &Value) -> Result<Value> {
-    use designcraft_color::{GradientKind, GradientStop};
+    use designz_color::{GradientKind, GradientStop};
     let kind = match str_param(p, "kind") {
         Some("radial") => Some(GradientKind::Radial),
         Some("linear") => Some(GradientKind::Linear),
@@ -928,7 +928,7 @@ fn apply_gradient(s: &mut Session, p: &Value) -> Result<Value> {
         for id in &ids {
             let Some(it) = d.item(*id) else { continue };
             let cur_name = it.fill.swatch.clone();
-            let cur = designcraft_color::swatch::resolve_gradient(&d.swatches, &cur_name).cloned();
+            let cur = designz_color::swatch::resolve_gradient(&d.swatches, &cur_name).cloned();
             let mut g = cur.clone().unwrap_or_default();
             if let Some(k) = kind {
                 g.kind = k;
@@ -1013,11 +1013,11 @@ fn apply_color(s: &mut Session, p: &Value) -> Result<Value> {
 
 /// A process swatch holding exactly `color`, else a new unnamed one (hidden from the Swatches
 /// panel until Add to Swatches).
-fn color_swatch(d: &mut designcraft_doc::Document, color: designcraft_color::Color) -> String {
+fn color_swatch(d: &mut designz_doc::Document, color: designz_color::Color) -> String {
     let existing = d
         .swatches
         .iter()
-        .find(|w| matches!(&w.value, SwatchValue::Color { color: c, color_type: designcraft_color::ColorType::Process } if *c == color))
+        .find(|w| matches!(&w.value, SwatchValue::Color { color: c, color_type: designz_color::ColorType::Process } if *c == color))
         .map(|w| w.name.clone());
     if let Some(n) = existing {
         return n;
@@ -1025,7 +1025,7 @@ fn color_swatch(d: &mut designcraft_doc::Document, color: designcraft_color::Col
     let name = Styles::unique_name(|n| d.swatch(n).is_some(), &value_name(color));
     d.swatches.push(Swatch {
         name: name.clone(),
-        value: SwatchValue::Color { color, color_type: designcraft_color::ColorType::Process },
+        value: SwatchValue::Color { color, color_type: designz_color::ColorType::Process },
         locked: false,
         named: false,
         hidden: true,
@@ -1033,7 +1033,7 @@ fn color_swatch(d: &mut designcraft_doc::Document, color: designcraft_color::Col
     name
 }
 
-fn color_items(d: &mut designcraft_doc::Document, ids: &[designcraft_doc::ItemId], name: &str, stroke: bool) {
+fn color_items(d: &mut designz_doc::Document, ids: &[designz_doc::ItemId], name: &str, stroke: bool) {
     for id in ids {
         if let Some(it) = d.item_mut(*id) {
             if stroke {
@@ -1073,28 +1073,28 @@ fn sample_color(s: &mut Session, p: &Value) -> Result<Value> {
 /// frame shows that point (locked ones too, as sampling changes nothing). (image frame, colour);
 /// None over no image, a transparent pixel, or a graphic that is not a raster (PDF, EPS).
 pub(crate) fn image_color_at(
-    d: &designcraft_doc::Document,
-    sr: designcraft_doc::SpreadRef,
-    at: designcraft_geom::Point,
-) -> Option<(designcraft_doc::ItemId, designcraft_color::Color)> {
+    d: &designz_doc::Document,
+    sr: designz_doc::SpreadRef,
+    at: designz_geom::Point,
+) -> Option<(designz_doc::ItemId, designz_color::Color)> {
     let sp = d.spread(sr)?;
-    let mut items: Vec<&designcraft_doc::Item> = sp.items.iter().map(|i| &**i).collect();
+    let mut items: Vec<&designz_doc::Item> = sp.items.iter().map(|i| &**i).collect();
     items.sort_by_key(|i| d.layer_rank(i.layer));
     items
         .into_iter()
         .rev()
         .filter(|it| d.layer(it.layer).is_none_or(|l| l.visible))
-        .find_map(|it| sample_item(d, it, designcraft_geom::Affine::IDENTITY, at, 0))
+        .find_map(|it| sample_item(d, it, designz_geom::Affine::IDENTITY, at, 0))
 }
 
 fn sample_item(
-    d: &designcraft_doc::Document,
-    it: &designcraft_doc::Item,
-    outer: designcraft_geom::Affine,
-    at: designcraft_geom::Point,
+    d: &designz_doc::Document,
+    it: &designz_doc::Item,
+    outer: designz_geom::Affine,
+    at: designz_geom::Point,
     depth: usize,
-) -> Option<(designcraft_doc::ItemId, designcraft_color::Color)> {
-    use designcraft_doc::Content;
+) -> Option<(designz_doc::ItemId, designz_color::Color)> {
+    use designz_doc::Content;
     if it.hidden || depth > 64 {
         return None;
     }
@@ -1103,7 +1103,7 @@ fn sample_item(
         Content::Group { items } => items.iter().rev().find_map(|c| sample_item(d, c, xf, at, depth + 1)),
         Content::Graphic(g) => {
             let inner = xf.inverse() * at;
-            if !designcraft_geom::hit::fill_contains(&it.path.to_bezpath(), designcraft_geom::FillRule::NonZero, inner) {
+            if !designz_geom::hit::fill_contains(&it.path.to_bezpath(), designz_geom::FillRule::NonZero, inner) {
                 return None;
             }
             let gp = g.xf.inverse() * inner;
@@ -1113,12 +1113,12 @@ fn sample_item(
                 return None;
             }
             let asset = d.assets.get(&g.asset).filter(|a| a.is_raster())?;
-            let img = designcraft_images::decode_rgba(&asset.data)?;
+            let img = designz_images::decode_rgba(&asset.data)?;
             let (pw, ph) = img.dimensions();
             let px = ((gp.x / w * f64::from(pw)) as u32).min(pw.checked_sub(1)?);
             let py = ((gp.y / h * f64::from(ph)) as u32).min(ph.checked_sub(1)?);
             let [r, gr, b, a] = img.get_pixel_checked(px, py)?.0;
-            (a > 0).then(|| (it.id, designcraft_color::Color::rgb8(r, gr, b)))
+            (a > 0).then(|| (it.id, designz_color::Color::rgb8(r, gr, b)))
         }
         _ => None,
     }
@@ -1179,7 +1179,7 @@ fn add_to_swatches(s: &mut Session, p: &Value) -> Result<Value> {
 /// Point text colours (character fill, stroke, underline and strikethrough; paragraph shading,
 /// border and rules; table cells, borders and alternating fills) at a renamed swatch, in a story
 /// and the texts inside it (table cells, footnotes, endnotes). Returns whether anything changed.
-fn rename_in_story(st: &mut designcraft_doc::Story, from: &str, to: &str, depth: usize) -> Result<bool> {
+fn rename_in_story(st: &mut designz_doc::Story, from: &str, to: &str, depth: usize) -> Result<bool> {
     // Refuse the whole edit instead of leaving deeper references pointing at a removed name.
     if depth > 32 {
         return Err(bad("swatch.addToSwatches", "story nesting exceeds 32 levels"));
@@ -1243,7 +1243,7 @@ fn rename_in_story(st: &mut designcraft_doc::Story, from: &str, to: &str, depth:
 }
 
 /// Point fills and strokes of an item (and its children) at a renamed swatch.
-fn rename_in(it: &mut designcraft_doc::Item, from: &str, to: &str) {
+fn rename_in(it: &mut designz_doc::Item, from: &str, to: &str) {
     if it.fill.swatch == from {
         it.fill.swatch = to.to_string();
     }
@@ -1411,7 +1411,7 @@ mod color_tests {
 
     #[test]
     fn percent_components_at_most_one_stay_percent() {
-        use designcraft_color::Color;
+        use designz_color::Color;
         // {"c": 0.7, ..., "y": 12.2} is a pale cream (C 0.7 %, Y 12.2 %), not C 70 %.
         let Some(Color::Cmyk { c, m, y, k }) = parse_color(&json!({"c": 0.7, "m": 0, "y": 12.2, "k": 0})) else { panic!("not CMYK") };
         assert!((c - 0.007).abs() < 1e-6 && m == 0.0 && (y - 0.122).abs() < 1e-6 && k == 0.0, "got {c} {m} {y} {k}");
@@ -1436,7 +1436,7 @@ mod color_tests {
         let r = s.execute("style.group", &json!({"kind": "paragraph", "names": ["Head", "Sub"], "group": "Titles"})).unwrap();
         assert_eq!(r["renamed"]["Head"], "Titles/Head");
         let d = s.doc().unwrap().doc.clone();
-        assert_eq!(d.story(designcraft_doc::StoryId(sid)).unwrap().paras[0].style, "Titles/Head");
+        assert_eq!(d.story(designz_doc::StoryId(sid)).unwrap().paras[0].style, "Titles/Head");
         assert_eq!(d.styles.para("Titles/Sub").unwrap().based_on.as_deref(), Some("Titles/Head"));
         // Out of the group again.
         s.execute("style.group", &json!({"kind": "paragraph", "names": ["Titles/Head"], "group": ""})).unwrap();
@@ -1475,7 +1475,7 @@ mod color_tests {
         assert_eq!(st.based_on.as_deref(), Some("Base"));
         // Exactly the attributes set: `null` unset the font style, the rest stayed unset.
         assert_eq!(st.chars, CharAttrs { size: Some(14.0), fill: Some("[Paper]".into()), tracking: Some(20.0), ..Default::default() });
-        let story = d.story(designcraft_doc::StoryId(sid)).unwrap();
+        let story = d.story(designz_doc::StoryId(sid)).unwrap();
         assert!(story.chars.iter().any(|r| r.format.style == "Strong"));
         assert!(story.chars.iter().all(|r| r.format.style != "Emphasis"));
         let lead = d.styles.para("Lead").unwrap();
@@ -1542,16 +1542,16 @@ mod color_tests {
         s.execute("object.color", &json!({"color": {"c": 10, "m": 20, "y": 30, "k": 0}, "target": "stroke"})).unwrap();
         assert_eq!(s.doc().unwrap().doc.swatches.len(), n);
         let d = &s.doc().unwrap().doc;
-        let it = d.item(designcraft_doc::ItemId(id)).unwrap();
+        let it = d.item(designz_doc::ItemId(id)).unwrap();
         assert_eq!(it.fill.swatch, it.stroke.swatch);
         // Add to Swatches with a name: listed, and the object follows the rename.
         s.execute("swatch.addToSwatches", &json!({"name": "Sand"})).unwrap();
         assert_eq!(listed(&s), before + 1);
         let d = &s.doc().unwrap().doc;
-        assert_eq!(d.item(designcraft_doc::ItemId(id)).unwrap().fill.swatch, "Sand");
+        assert_eq!(d.item(designz_doc::ItemId(id)).unwrap().fill.swatch, "Sand");
         // A colour equal to an existing swatch applies that swatch.
         s.execute("object.color", &json!({"color": {"c": 10, "m": 20, "y": 30, "k": 0}})).unwrap();
-        assert_eq!(s.doc().unwrap().doc.item(designcraft_doc::ItemId(id)).unwrap().fill.swatch, "Sand");
+        assert_eq!(s.doc().unwrap().doc.item(designz_doc::ItemId(id)).unwrap().fill.swatch, "Sand");
     }
 
     #[test]
@@ -1560,7 +1560,7 @@ mod color_tests {
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         let r = s.execute("frame.create", &json!({"rect": [72, 72, 400, 300], "content": "text", "text": "Hello world"})).unwrap();
-        let sid = designcraft_doc::StoryId(r["story"].as_u64().unwrap());
+        let sid = designz_doc::StoryId(r["story"].as_u64().unwrap());
         s.execute("text.select", &json!({"story": sid.0, "anchor": 11})).unwrap();
         s.execute("footnote.insert", &json!({"text": "note"})).unwrap();
         s.execute("text.select", &json!({"story": sid.0, "anchor": 0})).unwrap();
@@ -1631,8 +1631,8 @@ mod color_group_tests {
         s.execute("swatch.moveToGroup", &json!({"swatches": [b], "group": "Brand"})).unwrap();
         let groups = |s: &Session| s.doc().unwrap().doc.color_groups.clone();
         assert_eq!(groups(&s)[0].swatches, [a.clone(), b.clone()]);
-        let bytes = designcraft_idml::export_idml(&s.doc().unwrap().doc);
-        let back = designcraft_idml::import_idml(&bytes).unwrap();
+        let bytes = designz_idml::export_idml(&s.doc().unwrap().doc);
+        let back = designz_idml::import_idml(&bytes).unwrap();
         assert_eq!(back.color_groups, groups(&s), "IDML ColorGroup");
         s.execute("swatch.delete", &json!({"name": b})).unwrap();
         assert_eq!(groups(&s)[0].swatches, [a.as_str()]);
@@ -1671,7 +1671,7 @@ mod ink_tests {
         assert!(!pdf(&mut s).contains("Pantone"), "all spots to process");
         let l = s.execute("ink.list", &json!({})).unwrap();
         assert_eq!(l["inks"][0]["alias"], "Pantone B");
-        let back = designcraft_idml::import_idml(&designcraft_idml::export_idml(&s.doc().unwrap().doc)).unwrap();
+        let back = designz_idml::import_idml(&designz_idml::export_idml(&s.doc().unwrap().doc)).unwrap();
         assert!(back.inks.resolve("Pantone A").1, "IDML ConvertToProcess");
         assert!(back.inks.aliases.iter().any(|(a, b)| a == "Pantone A" && b == "Pantone B"), "IDML AliasInkName");
         assert!(s.execute("ink.options", &json!({"ink": "[Black]", "toProcess": true})).is_err());
@@ -1707,7 +1707,7 @@ mod export_tag_tests {
         let pdf = super::super::file::base64_decode(r["base64"].as_str().unwrap());
         let text = String::from_utf8_lossy(&pdf);
         assert!(text.contains("/S/H1") && text.contains("/S/P"), "structure elements");
-        assert!(designcraft_render::pdf_page_count(&pdf) == Some(1));
+        assert!(designz_render::pdf_page_count(&pdf) == Some(1));
     }
 }
 
@@ -1719,7 +1719,7 @@ mod cjk_tests {
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         let r = s.execute("frame.create", &json!({"rect": [0, 0, 300, 150], "content": "text", "text": "AB"})).unwrap();
-        let sid = designcraft_doc::StoryId(r["story"].as_u64().unwrap());
+        let sid = designz_doc::StoryId(r["story"].as_u64().unwrap());
         let definition = |scale| json!({"name": "Mixed", "entries": [{"family": "Source Serif 4", "relativeSize": scale}]});
         s.execute("style.compositeFont.set", &definition(1.0)).unwrap();
         s.execute("text.select", &json!({"story": sid.0, "anchor": 0, "focus": 2})).unwrap();
@@ -1738,15 +1738,15 @@ mod cjk_tests {
 
 #[cfg(test)]
 mod sample_color_tests {
-    use designcraft_color::{Color, SwatchValue};
-    use designcraft_doc::ItemId;
+    use designz_color::{Color, SwatchValue};
+    use designz_doc::ItemId;
     use serde_json::json;
 
     use crate::Session;
 
     /// A 2×1 image, red then blue, placed 144 pt wide at (72, 72): each pixel is 72 pt.
     fn session_with_image() -> (Session, u64) {
-        let png = designcraft_render::Rendered { width: 2, height: 1, pixels: vec![255, 0, 0, 255, 0, 0, 255, 255] }.to_png();
+        let png = designz_render::Rendered { width: 2, height: 1, pixels: vec![255, 0, 0, 255, 0, 0, 255, 255] }.to_png();
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         let b64 = super::super::file::base64_encode(&png);
@@ -1823,7 +1823,7 @@ mod sample_color_tests {
         for command in ["color.sample", "object.color"] {
             let (mut s, _) = session_with_image();
             let f = s.execute("frame.create", &json!({"rect": [300, 300, 500, 360], "content": "text"})).unwrap();
-            let story = designcraft_doc::StoryId(f["story"].as_u64().unwrap());
+            let story = designz_doc::StoryId(f["story"].as_u64().unwrap());
             s.execute("text.select", &json!({"story": story.0, "anchor": 0})).unwrap();
             let undo = s.doc().unwrap().history.undo.len();
             let r = s.execute(command, &json!({"at": [100, 100], "color": "#ff0000"})).unwrap();

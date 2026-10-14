@@ -1,20 +1,20 @@
 [package]
-name = "designcraft-idml"
+name = "designz-idml"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "DesignCraft IDML (InDesign Markup Language) import and export"
+description = "DesignZ IDML (InDesign Markup Language) import and export"
 
 [lints]
 workspace = true
 
 [dependencies]
-designcraft-geom = { workspace = true }
-designcraft-color = { workspace = true }
-designcraft-doc = { workspace = true }
+designz-geom = { workspace = true }
+designz-color = { workspace = true }
+designz-doc = { workspace = true }
 thiserror = { workspace = true }
 quick-xml = { workspace = true }
 zip = { workspace = true }
 
 [dev-dependencies]
-designcraft-compose = { workspace = true }
+designz-compose = { workspace = true }

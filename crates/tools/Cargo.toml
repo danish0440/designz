@@ -1,17 +1,17 @@
 [package]
-name = "designcraft-tools"
+name = "designz-tools"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "DesignCraft tools: pointer events in, commands and overlays out (Selection, Direct Selection, frames, Type, Hand, Zoom…)"
+description = "DesignZ tools: pointer events in, commands and overlays out (Selection, Direct Selection, frames, Type, Hand, Zoom…)"
 
 [lints]
 workspace = true
 
 [dependencies]
-designcraft-geom = { workspace = true }
-designcraft-color = { workspace = true }
-designcraft-doc = { workspace = true }
-designcraft-compose = { workspace = true }
+designz-geom = { workspace = true }
+designz-color = { workspace = true }
+designz-doc = { workspace = true }
+designz-compose = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

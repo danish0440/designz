@@ -1,28 +1,28 @@
 [package]
-name = "designcraft-engine"
+name = "designz-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "DesignCraft engine: session, documents, history, selection, command registry, tool hosting"
+description = "DesignZ engine: session, documents, history, selection, command registry, tool hosting"
 
 [lints]
 workspace = true
 
 [dependencies]
 craft-print = { workspace = true }
-designcraft-images = { workspace = true }
-designcraft-geom = { workspace = true }
-designcraft-color = { workspace = true }
-designcraft-doc = { workspace = true }
-designcraft-fonts = { workspace = true }
-designcraft-compose = { workspace = true }
-designcraft-render = { workspace = true }
-designcraft-format = { workspace = true }
-designcraft-epub = { workspace = true }
-designcraft-textimport = { workspace = true }
-designcraft-pdf = { workspace = true }
-designcraft-tools = { workspace = true }
-designcraft-idml = { workspace = true }
+designz-images = { workspace = true }
+designz-geom = { workspace = true }
+designz-color = { workspace = true }
+designz-doc = { workspace = true }
+designz-fonts = { workspace = true }
+designz-compose = { workspace = true }
+designz-render = { workspace = true }
+designz-format = { workspace = true }
+designz-epub = { workspace = true }
+designz-textimport = { workspace = true }
+designz-pdf = { workspace = true }
+designz-tools = { workspace = true }
+designz-idml = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -36,7 +36,7 @@ unicode-segmentation = { workspace = true }
 tempfile = { workspace = true }
 
 [dev-dependencies]
-designcraft-fonts = { workspace = true, features = ["testing"] }
+designz-fonts = { workspace = true, features = ["testing"] }
 zip = { workspace = true }
 hayro-syntax = "0.7.2"
 hayro-interpret = { version = "0.7.0", default-features = false, features = ["embed-fonts"] }

@@ -1,8 +1,8 @@
-# DesignCraft parity with Adobe InDesign
+# DesignZ parity with Adobe InDesign
 
 > **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-12 · **Change:** minor (text threads by hand) · **Target:** Adobe InDesign 2026 (21.6.0.57, macOS)
 
-The authoritative assessment of how close DesignCraft is to Adobe InDesign. [ROADMAP.md](../ROADMAP.md)
+The authoritative assessment of how close DesignZ is to Adobe InDesign. [ROADMAP.md](../ROADMAP.md)
 summarizes it; [gaps.md](gaps.md) lists every known shortfall one at a time; the feature-by-feature
 presence checklist is [parity-checklist.md](parity-checklist.md) (`cargo xtask parity`).
 
@@ -29,7 +29,7 @@ Two measurements bracket it, and neither is the answer by itself.
 - **Menu dump: 69% (lower bound, measured 2026-10-10).** The main menu tree of the running
   InDesign 2026 21.6, dumped through its scripting DOM during black-box observation
   (`plan/indesign/screenshots/menus.txt`, local, never committed: 1,121 entries, 798 leaf items),
-  was matched by a script against every label in the DesignCraft source (engine command labels,
+  was matched by a script against every label in the DesignZ source (engine command labels,
   `UI_COMMANDS`, the `MENUS` table, dialog and panel strings; case, punctuation and "Show/Hide"
   variants normalized). Excluded as out of scope or dynamic: the installed-font list (490 items),
   Plug-Ins, Adobe cloud and AI services (Firefly, Generate, Rewrite, Auto Style, Stock, CC
@@ -127,10 +127,10 @@ Discounts (multiplicative):
 |---|---|---|
 | Interaction fidelity | ×0.88 | right-click menus fail for some macOS users (#160, #238) and on Linux (#354); Paste in Place lands on page 1 (#348); formatting at a caret discarded (#289); font search focus (#335, #86) |
 | Stability on real machines | ×0.92 | start-up failures on Intel Mac Metal (#334) and Windows drivers (#167, #273, #220, #192, #166); no CI on pull requests; macOS on Apple silicon is solid |
-| File exchange with InDesign users | ×0.85 | `.indd` can't be opened (#21); IDML import/export bugs (#193, #338, #339, #340, #211); opened text reflows: optical kerning (#181), overset rule (#180). Harsher than VectorCraft's ×0.92 because InDesign pros receive and send native files daily |
+| File exchange with InDesign users | ×0.85 | `.indd` can't be opened (#21); IDML import/export bugs (#193, #338, #339, #340, #211); opened text reflows: optical kerning (#181), overset rule (#180). Harsher than VectorZ's ×0.92 because InDesign pros receive and send native files daily |
 
 60.7% × 0.88 × 0.92 × 0.85 = 41.8% → **~42%**. It is lower than the full number (47%)
-because the full number spreads weight over dimensions DesignCraft does relatively well
+because the full number spreads weight over dimensions DesignZ does relatively well
 (performance, platforms, breadth of the long tail: 99% checklist presence), while the weekly core
 carries the gaps at full weight: threading, editing bugs and INDD exchange.
 
@@ -150,7 +150,7 @@ features), exchange edge cases, and everything excluded above.
 | Move, resize, rotate, align, duplicate | 10% | 75% | |
 | Copy and paste | 5% | 60% | works on macOS; Paste in Place to the wrong page (#348) |
 | Undo / redo | 5% | 85% | |
-| Save and reopen | 5% | 85% | `.designcraft` round trip, recovery |
+| Save and reopen | 5% | 85% | `.designz` round trip, recovery |
 | Export PDF / PNG | 10% | 80% | |
 | Print | 5% | 40% | PDF to CUPS/Windows via craft-print; physical output validation pending |
 | **Weighted depth** | 100% | **72.0%** | |
@@ -191,7 +191,7 @@ anyone outside the project had used the app. New evidence since then:
 - 79 open issues, many about core editing on Windows and Linux (copy/paste, context menus,
   threading, fonts not found, startup crashes), filed against the 0.4 and 0.5 releases.
 - The first measured menu coverage: 69% of the in-scope items of InDesign 21.6's own menu dump.
-- The main file format: InDesign users receive `.indd` files, which DesignCraft can't open. The
+- The main file format: InDesign users receive `.indd` files, which DesignZ can't open. The
   previous estimate treated INDD as out of scope; a professional can't.
 - No comparison of composition against InDesign exists, so typographic fidelity is unproven.
 
@@ -254,7 +254,7 @@ hours.
 - **Reference material:** `plan/indesign/01–11` (local, gitignored): overview, UI/UX, feature
   catalogue, menu tree, tools, panels, dialogs, file formats, shortcuts, typography, and
   observations of the running app.
-- **DesignCraft measured from source on `origin/main` (92649ff, 2026-10-10)**: command registry,
+- **DesignZ measured from source on `origin/main` (92649ff, 2026-10-10)**: command registry,
   `MENUS`, i18n catalogs, crate line and test counts, format modules. No local build (disk).
 - **User evidence:** GitHub issues #1–#352 and open PRs (65 open, including the INDD converter
   proposals #98 and #114).
@@ -271,8 +271,8 @@ It is evidence of breadth: each item exists. It is not a claim of InDesign-level
 - UI (egui): application bar + menus, Control panel (object and text modes), Tools panel with flyouts and the Fill/Stroke proxy (D, X, Shift+X, / as `color.*` commands), document tabs, rulers, pasteboard, guides (margins, columns, bleed, baseline grid), frame edges, selection handles, text ports and threads, Properties / Pages / Layers dock, Swatches, Styles, Character, Paragraph, Stroke, Text Wrap panels, New Document and Preferences dialogs, Quick Apply (⌘Return), 4 brightness themes.
 - Pen tool, Direct Selection anchor/handle editing, rotate from corners, Rotate/Scale/Shear tools, Eyedropper, snapping & smart guides, Align/Distribute, Find/Change (text + GREP), Story Editor, Paragraph Style Options, Effects panel, hidden characters, native macOS menu bar, measured InDesign 2026 look (Medium Dark): Properties sections per selection state, 21 pt spinner fields with arithmetic, Contextual Task Bar, inverse (black) text selection, Pages panel with drag-and-drop reorder / parent apply, Layers panel with per-object rows.
 - Tools: Selection (click, marquee, move, Alt-duplicate, resize handles), Direct Selection, Type (draw frame, click caret, select, type), Rectangle/Ellipse/Polygon (+ frame variants), Line, Hand, Zoom.
-- PDF export (krilla): real selectable text with embedded font subsets, DeviceCMYK/RGB + spot Separations, bleed boxes, crop/bleed marks + page info, pages or spreads, PDF/A-2b (PDF/X-4 output intent pending) — `file.exportPdf`, File › Export PDF…, `designcraft-cli run --export out.pdf`. File › Export PDF… now opens an "Export PDF" options dialog (General / Compression / Marks and Bleeds / Advanced) and remembers the last-used settings across exports and sessions.
-- IDML interchange (`designcraft-idml`): export and import of swatches, styles, fonts, preferences, parent spreads, spreads/pages, frames, groups, images (embedded or linked), formatted threaded stories; attributes a file leaves unset take InDesign's defaults (Keep Lines Together at start/end of paragraph, 12 pt corners, paragraph rules in Text Color, auto-sizing from the centre, numbered lists restarting in each story, alternating table fills Black 20 % / None; a tint of −1 is the colour's own; frames take the fill, stroke, corners and Text Frame Options they don't write from their object style chain, then [None]) — opens in InDesign 2026 and round-trips InDesign-exported files (`file.exportIdml`, `file.openIdml`, File → Export IDML…, CLI `--in x.idml` / `--export x.idml`).
+- PDF export (krilla): real selectable text with embedded font subsets, DeviceCMYK/RGB + spot Separations, bleed boxes, crop/bleed marks + page info, pages or spreads, PDF/A-2b (PDF/X-4 output intent pending) — `file.exportPdf`, File › Export PDF…, `designz-cli run --export out.pdf`. File › Export PDF… now opens an "Export PDF" options dialog (General / Compression / Marks and Bleeds / Advanced) and remembers the last-used settings across exports and sessions.
+- IDML interchange (`designz-idml`): export and import of swatches, styles, fonts, preferences, parent spreads, spreads/pages, frames, groups, images (embedded or linked), formatted threaded stories; attributes a file leaves unset take InDesign's defaults (Keep Lines Together at start/end of paragraph, 12 pt corners, paragraph rules in Text Color, auto-sizing from the centre, numbered lists restarting in each story, alternating table fills Black 20 % / None; a tint of −1 is the colour's own; frames take the fill, stroke, corners and Text Frame Options they don't write from their object style chain, then [None]) — opens in InDesign 2026 and round-trips InDesign-exported files (`file.exportIdml`, `file.openIdml`, File → Export IDML…, CLI `--in x.idml` / `--export x.idml`).
 - Tables (M8): tables anchored in stories (header/footer/body rows, merged cells, per-edge strokes, fills + alternating fills, insets, vertical justification, at-least/exact row heights); composed into the text column (columns scale to fit, rows break across columns/frames with repeating headers/footers, overset); rendered, exported to PDF (real text) and IDML (export + import); Table menu, Table panel, Create Table dialog, caret/typing/Tab navigation and cell selection in cells; `table.*` commands.
 - Hyperlinks (text or frames → URL / e-mail / page) and bookmarks, exported as PDF link annotations and outline.
 - EPUB 3 (reflowable) export: stories in reading order, CSS from paragraph/character styles, images, navigation (`file.exportEpub`, CLI `--export x.epub`).
@@ -296,7 +296,7 @@ It is evidence of breadth: each item exists. It is not a claim of InDesign-level
 - Edit › Paste Into (copied objects become a frame's content, clipped by it; rendered, PDF and IDML both ways — verified in InDesign 2026); Polygon Settings (sides, star inset; double-click the Polygon tool).
 - Color panel (fill/stroke proxy, CMYK/RGB/Lab sliders with channel ramps, tint slider for swatches, spectrum ramp, Add to Swatches) and Color Picker (double-click the proxy); mixed colours are unnamed (not listed in Swatches until added); `object.color`, `swatch.addToSwatches`, `swatch.addUnnamed`.
 - Threading: click a selected text frame's in or out port (overset or not) to load the text cursor, then click a frame to thread it (stories merge), click empty space for a column-wide frame down to the bottom margin, or drag a frame; Shift-click autoflows, Alt-click stays loaded; click the linked frame or double-click a port to break the thread; Esc unloads. Link and unthread cursors show where a click threads or unthreads. `text.thread`, `text.unthread`, `text.removeFromThread`.
-- Place text files: Word (.docx: styles by name with their attributes, bold/italic/underline/size/font, footnotes, tables, tabs, breaks), RTF and plain text, into the insertion point, the selected frame or a new frame; autoflow adds pages and threaded frames until the text fits; Remove Styles option (`designcraft-textimport`).
+- Place text files: Word (.docx: styles by name with their attributes, bold/italic/underline/size/font, footnotes, tables, tabs, breaks), RTF and plain text, into the insertion point, the selected frame or a new frame; autoflow adds pages and threaded frames until the text fits; Remove Styles option (`designz-textimport`).
 - Gradient Feather (⇧G tool, `object.gradientFeather`): objects fade along a linear or radial opacity gradient, on screen and as a soft mask in PDF.
 - Script Label (`object.label`, `object.findByLabel`), alt text (`object.altText`), Isolate Blending / Knockout Group (`object.transparencyGroup`; on screen, PDF isolates), Table ▸ Sort (`table.sortRows`, numeric-aware, header/footer fixed).
 - File ▸ Export Text (`file.exportText`): a story as Text Only or RTF (fonts, styles, alignment, indents, tables as tab-separated rows); Export EPUB now asks for a path in the UI.
@@ -339,7 +339,7 @@ It is evidence of breadth: each item exists. It is not a claim of InDesign-level
 - Stroke styles: striped (thick-thin… and custom bands), wavy and straight-hash strokes now draw on screen and in PDF; named custom stripe/dash/dot styles (`strokeStyle.new/delete/list`, Stroke panel Type list; IDML Striped/Dashed/DottedStrokeStyle).
 - Object ▸ Primary Text Frame (`object.primaryTextFrame`): any text frame's story can become (or stop being) the primary story Smart Text Reflow follows.
 - Column rules (Text Frame Options › Column Rules, `object.textFrameOptions {columnRule, columnRuleWeight, columnRuleColor, columnRuleTint, columnRuleOffset, columnRuleTopInset, columnRuleBottomInset}`, reported by `document.inspect`): a bar centred in each gutter of a multi-column frame, inside the insets and between the columns of right-to-left and vertical frames too, broken around paragraphs that span columns, with weight, colour, tint, horizontal offset and top/bottom insets; on screen, in PDF (tagged as an artifact) and in IDML (`ColumnRule…` attributes of `TextFramePreference`, also in object styles). The dialog shows the frame's options and changes only the fields edited. Rule stroke types and overprint aren't there yet.
-- Place a page of an IDML or DesignCraft document (`file.place {layoutPage}`): its objects, stories, styles and swatches as one group (INDD files are not readable).
+- Place a page of an IDML or DesignZ document (`file.place {layoutPage}`): its objects, stories, styles and swatches as one group (INDD files are not readable).
 - Articles panel (`article.new/add/remove/options/delete/list`): reading order and content of EPUB and HTML exports.
 - Object ▸ Clipping Path (`object.clippingPath {type: alpha|edges, threshold, tolerance}`): traces the placed image and makes the outline the frame.
 - Gridify: arrow keys while dragging a frame or shape tool add columns/rows (`frame.grid`), one undo step.
@@ -390,7 +390,7 @@ It is evidence of breadth: each item exists. It is not a claim of InDesign-level
 - EPUB: cover image from the first page (`file.exportEpub {cover}`), and Fixed Layout export (`file.exportFixedEpub`, File ▸ Export EPUB (Fixed Layout)…): pre-paginated pages as 144 ppi images with their text kept for search and read-aloud.
 - Interactive PDF options (`file.exportPdf {fullScreen, bookmarksPanel, pageLayout, view, advanceSeconds}`, File ▸ Export PDF (Interactive)…): page mode, layout, opening view and page timing in the catalog and pages.
 - Object Export Options (`object.exportOptions`): tagged-PDF artifact, EPUB/HTML rasterize (the object as an image), alignment and page break before, alt text.
-- Scripts panel (Window ▸ Utilities ▸ Scripts, `script.run`): saved command scripts (with `$N.path` references to earlier results) run as one undo step; edit, add, load and delete them in the panel. Scripts use DesignCraft's command language, not ExtendScript.
+- Scripts panel (Window ▸ Utilities ▸ Scripts, `script.run`): saved command scripts (with `$N.path` references to earlier results) run as one undo step; edit, add, load and delete them in the panel. Scripts use DesignZ's command language, not ExtendScript.
 - Drag and drop text editing: drag selected text to move it (Alt copies) with its formatting (`text.release`).
 - Image Import Options: place any page of a multi-page PDF (`file.place {pdfPage}`; the app asks which page), shown on screen and embedded as that page in PDF export.
 - Define Lists: named numbered lists that continue across stories in page order (`list.define`, paragraph `listName` / `startAt`), round-tripped through IDML; `null` in `type.para` / `type.char` now removes an override.
@@ -413,13 +413,13 @@ It is evidence of breadth: each item exists. It is not a claim of InDesign-level
 - Underline / Strikethrough Options: weight, offset, colour and tint (Character panel; screen, PDF and IDML).
 - Relink to Folder and Relink File Extension (`links.relinkFolder`; missing links found by name).
 - File › Package (⌥⇧⌘P): the document relinked to a Links folder, the placed files, the font files that draw its text in a Document Fonts folder (the fonts it names and any fallback fonts that draw characters those lack; except fonts whose licence restricts it, OS/2 `fsType`), an IDML copy, an optional PDF and a report (fonts, fallback fonts, links, preflight, instructions); Copy Links To (`links.copyTo`).
-- Document fonts: opening a `.designcraft` or `.idml` file loads the fonts in the `Document Fonts` folder beside it (as Package writes it), ahead of installed fonts with the same name, so a packaged document opens with its fonts on another machine. Damaged, oversized (over 256 MB per file, 512 MB in all) and surplus (over 200) font files are skipped and listed in `file.open`'s `warnings`; `font.list` gives each font's `source`. Document fonts belong to their document, as in InDesign: other open documents don't see them (each document with a same-named font draws with its own), and closing the document (or reverting it, or a book chapter's export ending) makes them unavailable. Their files stay in memory until DesignCraft quits, so reopening a document doesn't read or load them again; on the web there is no folder to read.
+- Document fonts: opening a `.designz` or `.idml` file loads the fonts in the `Document Fonts` folder beside it (as Package writes it), ahead of installed fonts with the same name, so a packaged document opens with its fonts on another machine. Damaged, oversized (over 256 MB per file, 512 MB in all) and surplus (over 200) font files are skipped and listed in `file.open`'s `warnings`; `font.list` gives each font's `source`. Document fonts belong to their document, as in InDesign: other open documents don't see them (each document with a same-named font draws with its own), and closing the document (or reverting it, or a book chapter's export ending) makes them unavailable. Their files stay in memory until DesignZ quits, so reopening a document doesn't read or load them again; on the web there is no folder to read.
 - Load Swatches / Save Swatches for Exchange (.ase: CMYK, RGB, Lab, Gray; spot or process) from the Swatches panel menu; `swatch.load` / `swatch.save`.
 - Pathfinder (Object › Pathfinder and a Pathfinder panel): Add, Subtract, Intersect, Exclude Overlap, Minus Back; curves stay curves (flo_curves); `object.pathfinder`.
 - Make / Release Compound Path (⌘8; nested paths become holes), Create Outlines (⇧⌘O; one path per text colour), Scissors tool (C) with `path.split`.
 - Transform Again / Individually / Sequence Again (⌥⌘3; a moved copy repeats like Step and Repeat), Clear Transformations; Layers: Merge, Delete Unused, Hide/Lock Others, Show/Unlock All; Break Link to Style (paragraph and character).
 - Floating panels: tear a panel off the dock (its float button, or drag its header away) into a movable, resizable window; Dock puts it back; positions persist; `window.floatPanel` / `window.dockPanel`.
-- Place SVG (vector in PDF export via krilla-svg, resvg on screen, text in the bundled fonts), Photoshop (.psd/.psb composite in its colour mode — Bitmap, Grayscale, Duotone, Indexed, RGB, CMYK, Lab, 8/16-bit — with merged transparency; extra alpha and spot channels don't change the image), BMP, and Illustrator files saved with PDF compatibility (.ai). New `designcraft-images` crate (L2) for sniffing, sizes and decoding. EPS is still missing.
+- Place SVG (vector in PDF export via krilla-svg, resvg on screen, text in the bundled fonts), Photoshop (.psd/.psb composite in its colour mode — Bitmap, Grayscale, Duotone, Indexed, RGB, CMYK, Lab, 8/16-bit — with merged transparency; extra alpha and spot channels don't change the image), BMP, and Illustrator files saved with PDF compatibility (.ai). New `designz-images` crate (L2) for sniffing, sizes and decoding. EPS is still missing.
 - View › Display Performance: Fast (grey boxes, no effects, ⌥⇧⌘Z), Typical (72 ppi proxies, ⌥⌘Z), High Quality (⌥⌘H, our default — the renderer is fast enough).
 - OpenType menu (Character panel): discretionary ligatures, fractions, ordinal, swash, titling, contextual alternates, slashed zero, the four figure styles and stylistic sets 1–20; `type.openType`; mapped to IDML's OTF attributes.
 - Add Anchor Point (=), Delete Anchor Point (-) and Convert Direction Point (⇧C) tools (click toggles smooth/corner, drag pulls out handles), with `path.addAnchor`, `path.deleteAnchor`, `path.convertAnchor`.
@@ -433,8 +433,8 @@ It is evidence of breadth: each item exists. It is not a claim of InDesign-level
 - Table of contents (generate/update, dot leaders) and text variables (running headers, last page number, chapter number, file name, dates, custom) resolved per page.
 - Soft effects: blurred drop shadow, inner shadow, outer glow, basic feather.
 - ~200 commands, all reachable through the JSON control channel; headless CLI rendering to PNG.
-- MCP server (`designcraft-cli mcp [--connect PORT]`, docs/mcp.md): headless engine or the running app; commands, batch, document/story inspection, page renders as images, window screenshots, pointer/keyboard/dialog input.
-- Web build (`apps/designcraft-web`, trunk): the same UI on WebGPU with a WebGL2 fallback; open/place via the browser file picker or drag-and-drop, save/export as downloads.
+- MCP server (`designz-cli mcp [--connect PORT]`, docs/mcp.md): headless engine or the running app; commands, batch, document/story inspection, page renders as images, window screenshots, pointer/keyboard/dialog input.
+- Web build (`apps/designz-web`, trunk): the same UI on WebGPU with a WebGL2 fallback; open/place via the browser file picker or drag-and-drop, save/export as downloads.
 
 Task notes that headed ROADMAP.md:
 

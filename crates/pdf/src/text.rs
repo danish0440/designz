@@ -10,10 +10,10 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
 
-use designcraft_compose::{ComposedStory, FrameText, PlacedGlyph};
-use designcraft_fonts::{FontDb, FontFace};
-use designcraft_geom::kurbo::Shape as _;
-use designcraft_geom::{Affine, BezPath, Rect};
+use designz_compose::{ComposedStory, FrameText, PlacedGlyph};
+use designz_fonts::{FontDb, FontFace};
+use designz_geom::kurbo::Shape as _;
+use designz_geom::{Affine, BezPath, Rect};
 use krilla::geom::Point;
 use krilla::paint::Stroke;
 use krilla::surface::Surface;
@@ -22,7 +22,7 @@ use krilla::text::{Font, GlyphId, KrillaGlyph};
 
 use crate::export::{Exporter, solid_fill, tf, to_path};
 
-/// Private-use characters DesignCraft stores for markers (page numbers, section markers, breaks).
+/// Private-use characters DesignZ stores for markers (page numbers, section markers, breaks).
 fn is_marker(c: char) -> bool {
     ('\u{E000}'..='\u{E1FF}').contains(&c)
 }
@@ -40,8 +40,8 @@ fn same_run(a: &PlacedGlyph, b: &PlacedGlyph) -> bool {
 }
 
 /// Merge bars of one paint layer; underlines and strikes must never be merged together.
-fn text_rules(cs: &ComposedStory, ft: &FrameText, underline: bool) -> Vec<(designcraft_compose::Rule, Rect)> {
-    let mut bars: Vec<(designcraft_compose::Rule, Rect)> = Vec::new();
+fn text_rules(cs: &ComposedStory, ft: &FrameText, underline: bool) -> Vec<(designz_compose::Rule, Rect)> {
+    let mut bars: Vec<(designz_compose::Rule, Rect)> = Vec::new();
     for line in &ft.lines {
         for g in line.glyphs.iter().filter(|g| g.visible) {
             let style = &cs.styles[g.style as usize];
@@ -49,7 +49,7 @@ fn text_rules(cs: &ComposedStory, ft: &FrameText, underline: bool) -> Vec<(desig
             if !on {
                 continue;
             }
-            let rect = rule.rect(g.x, g.x + g.adv, designcraft_compose::rule_baseline(style, line, g));
+            let rect = rule.rect(g.x, g.x + g.adv, designz_compose::rule_baseline(style, line, g));
             match bars.last_mut() {
                 Some((last_rule, last)) if last_rule == rule && (last.y0 - rect.y0).abs() < 1e-6 && (rect.x0 - last.x1).abs() < 0.5 => {
                     last.x1 = rect.x1;
@@ -213,14 +213,14 @@ impl Exporter<'_> {
                 let st = &seg.stroke;
                 let Some(col) = self.swatch_color(&st.color, st.tint) else { continue };
                 let (cap, dash) = match &st.kind {
-                    designcraft_doc::StrokeType::Dashed { pattern } if pattern.iter().any(|v| *v > 0.0) => {
+                    designz_doc::StrokeType::Dashed { pattern } if pattern.iter().any(|v| *v > 0.0) => {
                         let mut pat: Vec<f32> = pattern.iter().map(|v| v.max(0.0) as f32).collect();
                         if pat.len() % 2 == 1 {
                             pat.extend(pat.clone());
                         }
                         (krilla::paint::LineCap::Butt, Some(krilla::paint::StrokeDash { array: pat, offset: 0.0 }))
                     }
-                    designcraft_doc::StrokeType::Dotted => {
+                    designz_doc::StrokeType::Dotted => {
                         (krilla::paint::LineCap::Round, Some(krilla::paint::StrokeDash { array: vec![0.0, (st.weight * 2.0) as f32], offset: 0.0 }))
                     }
                     _ => (krilla::paint::LineCap::Square, None),
@@ -291,7 +291,7 @@ impl Exporter<'_> {
         let st = &cs.styles[g0.style as usize];
         let fill = self.swatch_color(&st.fill, st.fill_tint);
         let stroke =
-            if st.stroke != designcraft_color::swatch::NONE && st.stroke_weight > 0.0 { self.swatch_color(&st.stroke, st.stroke_tint) } else { None };
+            if st.stroke != designz_color::swatch::NONE && st.stroke_weight > 0.0 { self.swatch_color(&st.stroke, st.stroke_tint) } else { None };
         if fill.is_none() && stroke.is_none() {
             return;
         }
@@ -364,9 +364,9 @@ impl Exporter<'_> {
 
     /// One line of plain text in the bundled UI face (page information mark).
     pub(crate) fn plain_text(&mut self, s: &mut Surface, text: &str, at: (f64, f64), size: f64, color: krilla::color::Color) {
-        let face = FontDb::global().face(designcraft_fonts::FALLBACK_FAMILY, "Regular");
+        let face = FontDb::global().face(designz_fonts::FALLBACK_FAMILY, "Regular");
         let Some(font) = self.font(&face) else { return };
-        let shaped = designcraft_fonts::shape(&face, text, &[], |c| c);
+        let shaped = designz_fonts::shape(&face, text, &[], |c| c);
         let upem = face.upem as f32;
         let glyphs: Vec<KrillaGlyph> = shaped
             .iter()

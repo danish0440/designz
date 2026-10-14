@@ -36,7 +36,7 @@ fn save(_: &Book) -> Result<()> {
     Err(EngineError::Other("books need a file system".into()))
 }
 
-fn load(path: &str) -> Result<designcraft_doc::Document> {
+fn load(path: &str) -> Result<designz_doc::Document> {
     #[cfg(not(target_arch = "wasm32"))]
     let bytes = std::fs::read(path).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
     #[cfg(target_arch = "wasm32")]
@@ -45,7 +45,7 @@ fn load(path: &str) -> Result<designcraft_doc::Document> {
         vec![]
     };
     if path.to_lowercase().ends_with(".idml") {
-        return designcraft_idml::import_idml(&bytes).map_err(|e| EngineError::Other(format!("{path}: {e}")));
+        return designz_idml::import_idml(&bytes).map_err(|e| EngineError::Other(format!("{path}: {e}")));
     }
     super::file::from_bytes(&bytes).map_err(|e| EngineError::Other(format!("{path}: {e}")))
 }
@@ -69,17 +69,17 @@ impl ChapterBatch {
             return Err(bad(command, format!("a book update supports at most {MAX_BATCH_CHAPTERS} chapters")));
         }
         let directory = tempfile::Builder::new()
-            .prefix(".designcraft-book-")
+            .prefix(".designz-book-")
             .tempdir()
             .map_err(|e| EngineError::Other(format!("{command}: cannot stage chapter changes: {e}")))?;
         Ok(Self { directory, chapters: Vec::with_capacity(chapters), command })
     }
 
-    fn stage(&mut self, path: &str, doc: &designcraft_doc::Document) -> Result<()> {
+    fn stage(&mut self, path: &str, doc: &designz_doc::Document) -> Result<()> {
         use std::io::Write;
 
         // Propagate serialization errors; an empty fallback must never replace a chapter.
-        let bytes = designcraft_format::save(doc).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
+        let bytes = designz_format::save(doc).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
         let mut file = tempfile::Builder::new()
             .prefix("chapter-")
             .tempfile_in(self.directory.path())
@@ -123,7 +123,7 @@ fn writable_chapter(s: &Session, path: &str, command: &'static str) -> Result<()
     use std::path::Path;
 
     if Path::new(path).extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("idml")) {
-        return Err(bad(command, format!("cannot change imported IDML chapter {path}; convert it to a native DesignCraft document first")));
+        return Err(bad(command, format!("cannot change imported IDML chapter {path}; convert it to a native DesignZ document first")));
     }
     let target = std::fs::canonicalize(path).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
     if s.docs.iter().any(|doc| doc.path.as_ref().is_some_and(|open| std::fs::canonicalize(open).is_ok_and(|open| open == target))) {
@@ -136,7 +136,7 @@ fn writable_chapter(s: &Session, path: &str, command: &'static str) -> Result<()
     // writable directory even when an in-place write would be permitted.
     std::fs::OpenOptions::new().write(true).open(&target).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
     let parent = target.parent().ok_or_else(|| bad(command, format!("chapter {path} has no parent folder")))?;
-    tempfile::Builder::new().prefix(".designcraft-book-check-").tempfile_in(parent).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
+    tempfile::Builder::new().prefix(".designz-book-check-").tempfile_in(parent).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
     Ok(())
 }
 
@@ -217,11 +217,11 @@ mod safety_tests;
 
 /// Make page numbering of `d` start at `n` (the first section).
 #[cfg(not(target_arch = "wasm32"))]
-fn start_at(d: &mut designcraft_doc::Document, n: u32) {
+fn start_at(d: &mut designz_doc::Document, n: u32) {
     if !d.sections.iter().any(|x| x.start == 0) {
         d.sections.insert(
             0,
-            designcraft_doc::Section {
+            designz_doc::Section {
                 start: 0,
                 start_number: None,
                 style: Default::default(),
@@ -320,14 +320,14 @@ pub fn specs() -> Vec<CommandSpec> {
                 let mut d = load(path)?;
                 // The chapter's own fonts, for this export (skipped font files are logged).
                 let _fonts = super::file::load_document_fonts(&mut d, path).0;
-                let cache = designcraft_compose::Cache::new();
-                let r = designcraft_pdf::export_pdf_with_report(&d, &cache, &designcraft_pdf::PdfOptions::default()).map_err(|e| EngineError::Other(e.to_string()))?;
-                let n = designcraft_render::pdf_page_count(&r.bytes).unwrap_or(0);
-                let sizes: Vec<(f32, f32)> = (0..n).filter_map(|i| designcraft_render::pdf_page_size(&r.bytes, i)).map(|(w, h)| (w as f32, h as f32)).collect();
+                let cache = designz_compose::Cache::new();
+                let r = designz_pdf::export_pdf_with_report(&d, &cache, &designz_pdf::PdfOptions::default()).map_err(|e| EngineError::Other(e.to_string()))?;
+                let n = designz_render::pdf_page_count(&r.bytes).unwrap_or(0);
+                let sizes: Vec<(f32, f32)> = (0..n).filter_map(|i| designz_render::pdf_page_size(&r.bytes, i)).map(|(w, h)| (w as f32, h as f32)).collect();
                 parts.push((r.bytes, sizes));
             }
             let pages: usize = parts.iter().map(|p| p.1.len()).sum();
-            let bytes = designcraft_pdf::merge_pdfs(&parts, None).map_err(|e| EngineError::Other(e.to_string()))?;
+            let bytes = designz_pdf::merge_pdfs(&parts, None).map_err(|e| EngineError::Other(e.to_string()))?;
             match str_param(p, "path") {
                 Some(path) => {
                     #[cfg(not(target_arch = "wasm32"))]
@@ -352,26 +352,26 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let p = |n: &str| dir.join(n).to_string_lossy().to_string();
         let mut s = Session::new();
-        for (name, pages, style) in [("a.designcraft", 3, "Chapter Head"), ("b.designcraft", 2, "Other")] {
+        for (name, pages, style) in [("a.designz", 3, "Chapter Head"), ("b.designz", 2, "Other")] {
             s.execute("file.new", &json!({"pages": pages})).unwrap();
             s.execute("style.paragraph.create", &json!({"name": style, "chars": {"size": 20}})).unwrap();
             s.execute("file.saveAs", &json!({"path": p(name)})).unwrap();
             s.execute("file.close", &json!({})).unwrap();
         }
         s.execute("book.new", &json!({"path": p("book.dcbook")})).unwrap();
-        s.execute("book.add", &json!({"path": p("a.designcraft")})).unwrap();
-        s.execute("book.add", &json!({"path": p("b.designcraft")})).unwrap();
+        s.execute("book.add", &json!({"path": p("a.designz")})).unwrap();
+        s.execute("book.add", &json!({"path": p("b.designz")})).unwrap();
         let l = s.execute("book.list", &json!({})).unwrap();
         assert_eq!(l["documents"][1]["firstPage"], 4);
         assert_eq!(s.execute("book.paginate", &json!({})).unwrap()["pages"], 5);
-        let b = super::load(&p("b.designcraft")).unwrap();
+        let b = super::load(&p("b.designz")).unwrap();
         assert_eq!(b.page_name(0), "4", "continues after the first document");
         assert_eq!(s.execute("book.syncStyles", &json!({})).unwrap()["synced"], 1);
-        assert!(super::load(&p("b.designcraft")).unwrap().styles.para("Chapter Head").is_some());
+        assert!(super::load(&p("b.designz")).unwrap().styles.para("Chapter Head").is_some());
         let r = s.execute("book.exportPdf", &json!({})).unwrap();
         assert_eq!(r["pages"], 5);
         let bytes = super::super::file::base64_decode(r["base64"].as_str().unwrap());
-        assert_eq!(designcraft_render::pdf_page_count(&bytes), Some(5));
+        assert_eq!(designz_render::pdf_page_count(&bytes), Some(5));
         // A fresh session reopens the book.
         let mut t = Session::new();
         assert_eq!(t.execute("book.open", &json!({"path": p("book.dcbook")})).unwrap()["documents"], 2);

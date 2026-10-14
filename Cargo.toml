@@ -1,35 +1,35 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "apps/*", "xtask"]
-default-members = ["crates/*", "apps/designcraft", "apps/designcraft-cli", "xtask"]
+default-members = ["crates/*", "apps/designz", "apps/designz-cli", "xtask"]
 
 [workspace.package]
 version = "0.7.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.95"
-repository = "https://github.com/storytold/designcraft"
+repository = "https://github.com/danish0440/designz"
 
 [workspace.dependencies]
 craft-print = { git = "https://github.com/storytold/craft-libs", version = "0.1.0", rev = "d991bf6792f8ade99c51358bf3c1d902c8cd96b5" }
 # internal
-designcraft-geom = { path = "crates/geom" }
-designcraft-color = { path = "crates/color" }
-designcraft-doc = { path = "crates/doc" }
-designcraft-fonts = { path = "crates/fonts" }
-designcraft-compose = { path = "crates/compose" }
-designcraft-images = { path = "crates/images" }
-designcraft-render = { path = "crates/render" }
-designcraft-pdf = { path = "crates/pdf" }
-designcraft-idml = { path = "crates/idml" }
-designcraft-epub = { path = "crates/epub" }
-designcraft-textimport = { path = "crates/textimport" }
-designcraft-format = { path = "crates/format" }
-designcraft-tools = { path = "crates/tools" }
-designcraft-engine = { path = "crates/engine" }
-designcraft-ui-egui = { path = "crates/ui-egui" }
-designcraft-mcp = { path = "crates/mcp" }
-designcraft-testkit = { path = "crates/testkit" }
+designz-geom = { path = "crates/geom" }
+designz-color = { path = "crates/color" }
+designz-doc = { path = "crates/doc" }
+designz-fonts = { path = "crates/fonts" }
+designz-compose = { path = "crates/compose" }
+designz-images = { path = "crates/images" }
+designz-render = { path = "crates/render" }
+designz-pdf = { path = "crates/pdf" }
+designz-idml = { path = "crates/idml" }
+designz-epub = { path = "crates/epub" }
+designz-textimport = { path = "crates/textimport" }
+designz-format = { path = "crates/format" }
+designz-tools = { path = "crates/tools" }
+designz-engine = { path = "crates/engine" }
+designz-ui-egui = { path = "crates/ui-egui" }
+designz-mcp = { path = "crates/mcp" }
+designz-testkit = { path = "crates/testkit" }
 
 # foundation
 kurbo = { version = "0.13", features = ["serde"] }

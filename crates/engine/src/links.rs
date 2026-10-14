@@ -1,19 +1,19 @@
-//! ArtCraft community and project links (Help menu, About, start screen, CLI, MCP).
+//! community and project links (Help menu, About, start screen, CLI, MCP).
 
 use serde_json::{Value, json};
 
-/// The app's slug on getartcraft.com and GitHub.
-pub const APP: &str = "designcraft";
-/// The ArtCraft community Discord.
-pub const DISCORD: &str = "https://discord.gg/artcraft";
-/// The ArtCraft website.
-pub const WEBSITE: &str = "https://getartcraft.com";
-/// DesignCraft's page on the ArtCraft website.
-pub const APP_PAGE: &str = "https://getartcraft.com/apps/designcraft";
-/// DesignCraft's source repository.
-pub const GITHUB: &str = "https://github.com/storytold/designcraft";
+/// The app's slug on GitHub and GitHub.
+pub const APP: &str = "designz";
+/// The community Discord.
+pub const DISCORD: &str = "https://github.com/danish0440/designz/issues";
+/// The Upstream project.
+pub const WEBSITE: &str = "https://github.com/danish0440/designz";
+/// DesignZ's page on the Upstream project.
+pub const APP_PAGE: &str = "https://github.com/danish0440/designz";
+/// DesignZ's source repository.
+pub const GITHUB: &str = "https://github.com/danish0440/designz";
 /// Where to report bugs and request features.
-pub const ISSUES: &str = "https://github.com/storytold/designcraft/issues";
+pub const ISSUES: &str = "https://github.com/danish0440/designz/issues";
 
 /// All links as JSON (the `app.links` command).
 pub fn all() -> Value {

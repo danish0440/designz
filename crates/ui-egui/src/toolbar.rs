@@ -1,7 +1,7 @@
 //! The Tools panel (left): single or double column, tool groups with flyouts, fill/stroke proxy,
 //! screen mode buttons.
 
-use designcraft_tools::TOOL_GROUPS;
+use designz_tools::TOOL_GROUPS;
 use egui::{Color32, Sense, Stroke, StrokeKind, vec2};
 use serde_json::{Value, json};
 
@@ -184,7 +184,7 @@ pub fn show(app: &mut DesignApp, ui: &mut egui::Ui) {
             }
         }
     });
-    if std::env::var_os("DESIGNCRAFT_DEBUG_LAYOUT").is_some() {
+    if std::env::var_os("DESIGNZ_DEBUG_LAYOUT").is_some() {
         eprintln!("tools panel rect {:?} (wanted width {width}); remaining {:?}", r.response.rect, ui.available_rect_before_wrap());
     }
 }
@@ -463,7 +463,7 @@ mod tests {
     const STATUS_H: f32 = 17.0;
 
     fn app(double: bool) -> crate::DesignApp {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.ui.tools_double_column = double;
         app
     }
@@ -593,11 +593,11 @@ mod tests {
 #[cfg(test)]
 mod text_color_tests {
     use super::*;
-    use designcraft_doc::{ItemId, StoryId};
+    use designz_doc::{ItemId, StoryId};
 
     #[test]
     fn integration_color_swap_preserves_each_run_and_frame() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let mut frames = vec![];
         let mut stories = vec![];
@@ -638,7 +638,7 @@ mod text_color_tests {
     #[test]
     fn integration_color_toolbar_picker_targets_selected_frame_text() {
         use egui_kittest::kittest::Queryable;
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let f = app.run("frame.create", json!({"rect":[36,36,300,200],"content":"text","text":"hello"})).unwrap();
         app.run("selection.set", json!({"ids":[f["id"]]})).unwrap();

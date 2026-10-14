@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use designcraft_doc::{Document, Item, Story, StoryId, Styles, WrapMode};
+use designz_doc::{Document, Item, Story, StoryId, Styles, WrapMode};
 
 use crate::vars::RunningIndex;
 use crate::{ComposeOptions, ComposedStory};
@@ -181,7 +181,7 @@ impl Cache {
     }
 
     /// Frames whose composed content differs between two compositions of a story.
-    pub fn changed_frames(a: &ComposedStory, b: &ComposedStory) -> Vec<designcraft_doc::ItemId> {
+    pub fn changed_frames(a: &ComposedStory, b: &ComposedStory) -> Vec<designz_doc::ItemId> {
         let same_line = |x: &crate::Line, y: &crate::Line| {
             x.range == y.range
                 && (x.baseline - y.baseline).abs() < 1e-9

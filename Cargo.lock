@@ -886,12 +886,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft"
+name = "designz"
 version = "0.7.1"
 dependencies = [
  "arboard",
- "designcraft-engine",
- "designcraft-ui-egui",
+ "designz-engine",
+ "designz-ui-egui",
  "eframe",
  "egui",
  "log",
@@ -904,23 +904,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-cli"
+name = "designz-cli"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-compose",
- "designcraft-doc",
- "designcraft-engine",
- "designcraft-format",
- "designcraft-geom",
- "designcraft-mcp",
- "designcraft-pdf",
- "designcraft-render",
+ "designz-color",
+ "designz-compose",
+ "designz-doc",
+ "designz-engine",
+ "designz-format",
+ "designz-geom",
+ "designz-mcp",
+ "designz-pdf",
+ "designz-render",
  "serde_json",
 ]
 
 [[package]]
-name = "designcraft-color"
+name = "designz-color"
 version = "0.7.1"
 dependencies = [
  "kurbo",
@@ -932,13 +932,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-compose"
+name = "designz-compose"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-doc",
- "designcraft-fonts",
- "designcraft-geom",
+ "designz-color",
+ "designz-doc",
+ "designz-fonts",
+ "designz-geom",
  "hypher",
  "log",
  "miniz_oxide 0.8.9",
@@ -950,11 +950,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-doc"
+name = "designz-doc"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-geom",
+ "designz-color",
+ "designz-geom",
  "proptest",
  "serde",
  "serde_json",
@@ -962,24 +962,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-engine"
+name = "designz-engine"
 version = "0.7.1"
 dependencies = [
  "caseless",
  "craft-print",
- "designcraft-color",
- "designcraft-compose",
- "designcraft-doc",
- "designcraft-epub",
- "designcraft-fonts",
- "designcraft-format",
- "designcraft-geom",
- "designcraft-idml",
- "designcraft-images",
- "designcraft-pdf",
- "designcraft-render",
- "designcraft-textimport",
- "designcraft-tools",
+ "designz-color",
+ "designz-compose",
+ "designz-doc",
+ "designz-epub",
+ "designz-fonts",
+ "designz-format",
+ "designz-geom",
+ "designz-idml",
+ "designz-images",
+ "designz-pdf",
+ "designz-render",
+ "designz-textimport",
+ "designz-tools",
  "hayro-cmap",
  "hayro-interpret",
  "hayro-syntax",
@@ -997,16 +997,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-epub"
+name = "designz-epub"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-doc",
+ "designz-color",
+ "designz-doc",
  "zip",
 ]
 
 [[package]]
-name = "designcraft-fonts"
+name = "designz-fonts"
 version = "0.7.1"
 dependencies = [
  "harfrust 0.13.3",
@@ -1018,10 +1018,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-format"
+name = "designz-format"
 version = "0.7.1"
 dependencies = [
- "designcraft-doc",
+ "designz-doc",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -1029,7 +1029,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-geom"
+name = "designz-geom"
 version = "0.7.1"
 dependencies = [
  "flo_curves",
@@ -1042,52 +1042,52 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-idml"
+name = "designz-idml"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-compose",
- "designcraft-doc",
- "designcraft-geom",
+ "designz-color",
+ "designz-compose",
+ "designz-doc",
+ "designz-geom",
  "quick-xml 0.38.4",
  "thiserror 2.0.21",
  "zip",
 ]
 
 [[package]]
-name = "designcraft-images"
+name = "designz-images"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-fonts",
+ "designz-color",
+ "designz-fonts",
  "image",
  "resvg",
  "tiff",
 ]
 
 [[package]]
-name = "designcraft-mcp"
+name = "designz-mcp"
 version = "0.7.1"
 dependencies = [
- "designcraft-engine",
- "designcraft-geom",
- "designcraft-render",
- "designcraft-tools",
+ "designz-engine",
+ "designz-geom",
+ "designz-render",
+ "designz-tools",
  "image",
  "log",
  "serde_json",
 ]
 
 [[package]]
-name = "designcraft-pdf"
+name = "designz-pdf"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-compose",
- "designcraft-doc",
- "designcraft-fonts",
- "designcraft-geom",
- "designcraft-images",
+ "designz-color",
+ "designz-compose",
+ "designz-doc",
+ "designz-fonts",
+ "designz-geom",
+ "designz-images",
  "hayro-cmap",
  "hayro-interpret",
  "hayro-syntax",
@@ -1101,15 +1101,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-render"
+name = "designz-render"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-compose",
- "designcraft-doc",
- "designcraft-fonts",
- "designcraft-geom",
- "designcraft-images",
+ "designz-color",
+ "designz-compose",
+ "designz-doc",
+ "designz-fonts",
+ "designz-geom",
+ "designz-images",
  "hayro",
  "image",
  "log",
@@ -1119,40 +1119,40 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-textimport"
+name = "designz-textimport"
 version = "0.7.1"
 dependencies = [
- "designcraft-doc",
+ "designz-doc",
  "quick-xml 0.38.4",
  "zip",
 ]
 
 [[package]]
-name = "designcraft-tools"
+name = "designz-tools"
 version = "0.7.1"
 dependencies = [
- "designcraft-color",
- "designcraft-compose",
- "designcraft-doc",
- "designcraft-geom",
+ "designz-color",
+ "designz-compose",
+ "designz-doc",
+ "designz-geom",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "designcraft-ui-egui"
+name = "designz-ui-egui"
 version = "0.7.1"
 dependencies = [
  "craft-ui",
- "designcraft-color",
- "designcraft-compose",
- "designcraft-doc",
- "designcraft-engine",
- "designcraft-fonts",
- "designcraft-geom",
- "designcraft-idml",
- "designcraft-render",
- "designcraft-tools",
+ "designz-color",
+ "designz-compose",
+ "designz-doc",
+ "designz-engine",
+ "designz-fonts",
+ "designz-geom",
+ "designz-idml",
+ "designz-render",
+ "designz-tools",
  "egui",
  "egui_kittest",
  "log",
@@ -1168,12 +1168,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "designcraft-web"
+name = "designz-web"
 version = "0.7.1"
 dependencies = [
- "designcraft-engine",
- "designcraft-format",
- "designcraft-ui-egui",
+ "designz-engine",
+ "designz-format",
+ "designz-ui-egui",
  "eframe",
  "egui",
  "form_urlencoded",

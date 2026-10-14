@@ -1,16 +1,16 @@
 [package]
-name = "designcraft-doc"
+name = "designz-doc"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "DesignCraft document model: spreads, pages, parents, layers, frames, stories, styles, swatches"
+description = "DesignZ document model: spreads, pages, parents, layers, frames, stories, styles, swatches"
 
 [lints]
 workspace = true
 
 [dependencies]
-designcraft-geom = { workspace = true }
-designcraft-color = { workspace = true }
+designz-geom = { workspace = true }
+designz-color = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

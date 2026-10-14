@@ -1,4 +1,4 @@
-//! The DesignCraft document model (pure data + serde).
+//! The DesignZ document model (pure data + serde).
 //!
 //! A [`Document`] holds spreads of pages, parent ("master") spreads, layers, stories, styles,
 //! swatches, sections and embedded assets. Spreads, items and stories are `Arc`-shared so an
@@ -43,8 +43,8 @@ pub use datamerge::{
     DataField, DataFieldKind, DataMerge, DataSource, Delimiter, Fingerprint, MergeOptions, Placeholder, PlaceholderAnchor, PlaceholderRole,
     SourceStatus,
 };
-pub use designcraft_color as color;
-pub use designcraft_geom as geom;
+pub use designz_color as color;
+pub use designz_geom as geom;
 pub use edit::{ItemLoc, ItemPath, SpreadRef, item_hit as edit_hit};
 pub use endnotes::{ENDNOTE_REF, EditorialNote, EndnoteOptions, NOTE_MARK};
 pub use ids::*;
@@ -58,8 +58,8 @@ pub use styles::*;
 pub use table::*;
 pub use xref::{ANCHOR_MARK, CrossRef, TextAnchor, XREF_MARK, XrefFormat};
 
-use designcraft_color::Swatch;
-use designcraft_geom::Unit;
+use designz_color::Swatch;
+use designz_geom::Unit;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -697,8 +697,8 @@ impl Document {
         if global { self.settings.global_light } else { angle }
     }
 
-    pub fn resolve_color(&self, swatch: &str, tint: f32) -> Option<designcraft_color::Color> {
-        designcraft_color::swatch::resolve(&self.swatches, swatch, tint)
+    pub fn resolve_color(&self, swatch: &str, tint: f32) -> Option<designz_color::Color> {
+        designz_color::swatch::resolve(&self.swatches, swatch, tint)
     }
 
     /// Validate structural invariants (ids unique, threads consistent, stories well-formed).

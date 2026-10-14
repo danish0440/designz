@@ -1,7 +1,7 @@
 //! Window chrome: application bar (with menus), Control panel, document tabs, status bar, start screen.
 
-use designcraft_doc::{Align, Content};
-use designcraft_geom::Unit;
+use designz_doc::{Align, Content};
+use designz_geom::Unit;
 use egui::{Color32, Sense, Stroke, vec2};
 use serde_json::json;
 
@@ -124,7 +124,7 @@ pub fn app_bar(app: &mut DesignApp, ui: &mut egui::Ui) {
                             app.status("Export a PDF, IDML or package to share — no cloud account needed.");
                         }
                         ui.add_space(8.0);
-                        // Always one click away: the ArtCraft community Discord.
+                        // Always one click away: this app's GitHub issues.
                         if crate::about::discord_button(ui, "Discord", vec2(78.0, 22.0)) {
                             let _ = app.run("help.discord", json!({}));
                         }
@@ -139,8 +139,8 @@ pub fn app_bar(app: &mut DesignApp, ui: &mut egui::Ui) {
             });
             // Centred title.
             let title = match app.session.active() {
-                Some(d) => format!("DesignCraft — {}", crate::rtl::isolate(&d.title())),
-                None => "DesignCraft".to_string(),
+                Some(d) => format!("DesignZ — {}", crate::rtl::isolate(&d.title())),
+                None => "DesignZ".to_string(),
             };
             // Centred between the menus and the right-hand controls; left out when it won't fit.
             let galley = crate::rtl::plain(ui.ctx(), &title, egui::FontId::proportional(11.5), t.text);
@@ -662,7 +662,7 @@ pub fn start_screen(app: &mut DesignApp, ui: &mut egui::Ui) {
         |ui| {
             ui.label(crate::rtl::widget(
                 ui,
-                egui::RichText::new(crate::i18n::tr(&app.ui.language, "Welcome to DesignCraft")).font(semibold(28.0)).color(t.text_strong),
+                egui::RichText::new(crate::i18n::tr(&app.ui.language, "Welcome to DesignZ")).font(semibold(28.0)).color(t.text_strong),
             ));
             ui.label(crate::rtl::widget(
                 ui,
@@ -719,7 +719,7 @@ pub fn start_screen(app: &mut DesignApp, ui: &mut egui::Ui) {
             ));
             ui.add_space(8.0);
             ui.horizontal_wrapped(|ui| {
-                for p in designcraft_doc::build::PRESETS.iter().filter(|p| p.intent == designcraft_doc::Intent::Print) {
+                for p in designz_doc::build::PRESETS.iter().filter(|p| p.intent == designz_doc::Intent::Print) {
                     let (cr, resp) = ui.allocate_exact_size(vec2(120.0, 150.0), Sense::click());
                     let hov = resp.hovered();
                     ui.painter().rect_filled(cr, 6.0, if hov { t.hover } else { t.panel });
@@ -730,7 +730,7 @@ pub fn start_screen(app: &mut DesignApp, ui: &mut egui::Ui) {
                     ui.painter().text(
                         egui::pos2(cr.center().x, cr.max.y - 11.0),
                         egui::Align2::CENTER_CENTER,
-                        format!("{} × {}", designcraft_geom::format_measure(p.width, p.units), designcraft_geom::format_measure(p.height, p.units)),
+                        format!("{} × {}", designz_geom::format_measure(p.width, p.units), designz_geom::format_measure(p.height, p.units)),
                         egui::FontId::proportional(10.0),
                         t.text_dim,
                     );
@@ -744,7 +744,7 @@ pub fn start_screen(app: &mut DesignApp, ui: &mut egui::Ui) {
     let _ = Content::Unassigned;
 }
 
-/// Start screen: the ArtCraft community (Discord first) and project links.
+/// Start screen: the community (Discord first) and project links.
 fn community_card(app: &mut DesignApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     egui::Frame::NONE.fill(t.panel).corner_radius(10.0).inner_margin(egui::Margin::same(14)).show(ui, |ui| {
@@ -756,7 +756,7 @@ fn community_card(app: &mut DesignApp, ui: &mut egui::Ui) {
             ui.vertical(|ui| {
                 ui.label(crate::rtl::widget(
                     ui,
-                    egui::RichText::new(crate::i18n::tr(&app.ui.language, "Join the ArtCraft community")).font(semibold(14.0)).color(t.text_strong),
+                    egui::RichText::new(crate::i18n::tr(&app.ui.language, "Join the community")).font(semibold(14.0)).color(t.text_strong),
                 ));
                 ui.label(crate::rtl::widget(
                     ui,
@@ -766,8 +766,8 @@ fn community_card(app: &mut DesignApp, ui: &mut egui::Ui) {
                 ));
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
-                    for (text, id) in [("DesignCraft page", "help.appPage"), ("GitHub", "help.github"), ("getartcraft.com", "help.website")] {
-                        let url = designcraft_engine::links::get(&id[5..]).unwrap_or_default();
+                    for (text, id) in [("DesignZ page", "help.appPage"), ("GitHub", "help.github"), ("Upstream", "help.website")] {
+                        let url = designz_engine::links::get(&id[5..]).unwrap_or_default();
                         let l = ui
                             .add(egui::Label::new(egui::RichText::new(text).size(12.0).color(t.accent).underline()).sense(Sense::click()))
                             .on_hover_text(url)
@@ -780,7 +780,7 @@ fn community_card(app: &mut DesignApp, ui: &mut egui::Ui) {
                 });
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if crate::about::discord_button(ui, crate::i18n::tr(&app.ui.language, "Join our Discord"), vec2(190.0, 38.0)) {
+                if crate::about::discord_button(ui, crate::i18n::tr(&app.ui.language, "Get help on GitHub"), vec2(190.0, 38.0)) {
                     let _ = app.run("help.discord", json!({}));
                 }
             });
@@ -800,7 +800,7 @@ mod tests {
     const FIRST_CONTROL: &str = "Rotate 90° Counterclockwise";
 
     fn app() -> crate::DesignApp {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.ui.control_bar = true;
         app
     }

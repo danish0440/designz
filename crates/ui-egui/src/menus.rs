@@ -11,7 +11,7 @@ pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
     ("app.placeDialog", "Place…", Some("Cmd+D"), "{}"),
     ("app.saveDialog", "Save As…", Some("Cmd+Shift+S"), "{}"),
     ("app.save", "Save", Some("Cmd+S"), "{}"),
-    ("app.quit", "Quit DesignCraft", Some("Cmd+Q"), "{} — close the window; each document with unsaved changes asks first"),
+    ("app.quit", "Quit DesignZ", Some("Cmd+Q"), "{} — close the window; each document with unsaved changes asks first"),
     ("app.saveCopyDialog", "Save a Copy…", Some("Cmd+Alt+S"), "{} — choose where to write a copy (the document stays as it is)"),
     ("app.loadSwatches", "Load Swatches…", None, "{} — pick a swatch exchange (.ase) file"),
     ("app.packageDialog", "Package…", Some("Cmd+Alt+Shift+P"), "{} — choose the package folder to create (file.package)"),
@@ -179,15 +179,15 @@ pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
         "{on?: bool, at?: [x, y] (points from the canvas's top-left)} — the Contextual Task Bar stays where it is (or at `at`) instead of following the selection; with neither, toggles",
     ),
     ("window.taskBarReset", "Reset Bar Position", None, "{} — the Contextual Task Bar follows the selection again, under it"),
-    ("help.discord", "Join the ArtCraft Discord…", None, "{} — opens https://discord.gg/artcraft in the browser"),
-    ("help.appPage", "DesignCraft Website…", None, "{} — opens https://getartcraft.com/apps/designcraft"),
-    ("help.github", "DesignCraft on GitHub…", None, "{} — opens https://github.com/storytold/designcraft"),
+    ("help.discord", "Get help on GitHub…", None, "{} — opens https://github.com/danish0440/designz/issues in the browser"),
+    ("help.appPage", "DesignZ Website…", None, "{} — opens https://github.com/danish0440/designz"),
+    ("help.github", "DesignZ on GitHub…", None, "{} — opens https://github.com/danish0440/designz"),
     ("help.issues", "Report an Issue…", None, "{} — opens the GitHub issue tracker"),
-    ("help.website", "ArtCraft Website…", None, "{} — opens https://getartcraft.com"),
-    ("help.app", "ArtCraft App Page…", None, "{app} — opens https://getartcraft.com/apps/{app} (e.g. photocraft)"),
+    ("help.website", "Upstream project…", None, "{} — opens https://github.com/danish0440/designz"),
+    ("help.app", "App Page…", None, "{app} — opens https://github.com/danish0440/{app} (e.g. photocraft)"),
     (
         "help.about",
-        "About DesignCraft",
+        "About DesignZ",
         None,
         "{open?: true, tab?: \"about\"|\"contributors\"|\"models\"} — the About window: splash with community links, contributor and model credits (open: false closes it)",
     ),
@@ -798,7 +798,7 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
             return run_ui(app, "app.saveDialog", p);
         }
         "app.saveDialog" => {
-            let name = app.session.active().map(|d| format!("{}.designcraft", d.doc.title)).unwrap_or_default();
+            let name = app.session.active().map(|d| format!("{}.designz", d.doc.title)).unwrap_or_default();
             if let Some(path) = app.services.pick_save.as_mut().and_then(|f| f(&name)) {
                 return Some(app.run("file.saveAs", json!({"path": path})));
             }
@@ -809,7 +809,7 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
             Ok(Value::Null)
         }
         "app.saveCopyDialog" => {
-            let name = app.session.active().map(|d| format!("{} copy.designcraft", d.doc.title)).unwrap_or_default();
+            let name = app.session.active().map(|d| format!("{} copy.designz", d.doc.title)).unwrap_or_default();
             if let Some(path) = app.services.pick_save.as_mut().and_then(|f| f(&name)) {
                 return Some(app.run("file.saveACopy", json!({"path": path})));
             }
@@ -863,10 +863,10 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
             let g = app.session.active().and_then(|d| d.selection.items.first().and_then(|id| d.doc.item(*id)).and_then(|it| it.graphic().cloned()));
             let Some(g) = g else { return Some(Err("select a frame with a placed graphic".into())) };
             let fitting = serde_json::to_value(g.auto_fit).unwrap_or(json!("none"));
-            let c = |v: f64| json!(designcraft_geom::format_measure(v, designcraft_geom::Unit::Points));
+            let c = |v: f64| json!(designz_geom::format_measure(v, designz_geom::Unit::Points));
             app.ui.dialog = Some(crate::dialogs::Dialog::new(
                 "fittingOptions",
-                json!({"autoFit": g.auto_fit != designcraft_doc::Fitting::None, "fitting": fitting, "align": g.fit_align,
+                json!({"autoFit": g.auto_fit != designz_doc::Fitting::None, "fitting": fitting, "align": g.fit_align,
                     "cropTop": c(g.crop[0]), "cropLeft": c(g.crop[1]), "cropBottom": c(g.crop[2]), "cropRight": c(g.crop[3])}),
             ));
             Ok(Value::Null)
@@ -943,14 +943,14 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
                 Ok(r) => r,
                 Err(e) => return Some(Err(e)),
             };
-            let bytes = designcraft_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default());
+            let bytes = designz_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default());
             match app.services.write.as_mut() {
                 Some(w) => w(&path, &bytes).map(|_| json!({"path": path, "bytes": bytes.len()})),
                 None => Err("no writer".into()),
             }
         }
         "app.storyEditor" => {
-            let sid = p.get("story").and_then(Value::as_u64).map(designcraft_doc::StoryId).or_else(|| {
+            let sid = p.get("story").and_then(Value::as_u64).map(designz_doc::StoryId).or_else(|| {
                 let st = app.session.active()?;
                 st.selection.text.map(|t| t.story).or_else(|| st.selection.items.iter().find_map(|i| st.doc.item(*i)?.text_frame().map(|t| t.story)))
             });
@@ -1058,9 +1058,9 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
                 f["userWords"] =
                     json!(words.as_array().map(|a| a.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("\n")).unwrap_or_default());
                 let inc = doc["keyboardIncrement"].as_f64().unwrap_or(1.0);
-                f["keyboardIncrement"] = json!(designcraft_geom::format_measure(inc, designcraft_geom::Unit::Points));
+                f["keyboardIncrement"] = json!(designz_geom::format_measure(inc, designz_geom::Unit::Points));
                 let units = app.session.active().map(|d| d.doc.settings.horizontal_units).unwrap_or_default();
-                let m = |v: &Value| json!(designcraft_geom::format_measure(v.as_f64().unwrap_or(0.0), units));
+                let m = |v: &Value| json!(designz_geom::format_measure(v.as_f64().unwrap_or(0.0), units));
                 let (bg, g) = (&doc["baselineGrid"], &doc["grid"]);
                 f["bg.start"] = m(&bg["start"]);
                 f["bg.increment"] = m(&bg["increment"]);
@@ -1084,9 +1084,9 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
             f["snap.spacing"] = json!(app.ui.smart_spacing);
             f["snap.zone"] = json!(app.ui.snap_zone);
             f["displayQuality"] = json!(match app.ui.display_quality {
-                designcraft_render::DisplayQuality::Fast => "fast",
-                designcraft_render::DisplayQuality::Typical => "typical",
-                designcraft_render::DisplayQuality::High => "high",
+                designz_render::DisplayQuality::Fast => "fast",
+                designz_render::DisplayQuality::Typical => "typical",
+                designz_render::DisplayQuality::High => "high",
             });
             f["uiScale"] = json!((app.ui.ui_scale * 100.0).round());
             f["richBlack"] = json!(app.ui.rich_black);
@@ -1158,7 +1158,7 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
             flag(&mut app.ui.overprint_preview)
         }
         "view.fastDisplay" | "view.typicalDisplay" | "view.highQualityDisplay" => {
-            use designcraft_render::DisplayQuality as Q;
+            use designz_render::DisplayQuality as Q;
             app.ui.display_quality = match id {
                 "view.fastDisplay" => Q::Fast,
                 "view.typicalDisplay" => Q::Typical,
@@ -1203,11 +1203,11 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
             // Turns the spread in the middle of the view (InDesign's Rotate Spread).
             let angle = p.get("angle").and_then(Value::as_i64).unwrap_or(90);
             let Some(st) = app.session.active() else { return Some(Err("no document".into())) };
-            let layout = designcraft_tools::CanvasLayout::new(&st.doc, st.editing_parents);
+            let layout = designz_tools::CanvasLayout::new(&st.doc, st.editing_parents);
             let Some(slot) = crate::canvas::current_slot(app, &layout).and_then(|i| layout.slots.get(i).copied()) else {
                 return Some(Err("no spread".into()));
             };
-            let designcraft_doc::SpreadRef::Doc(si) = slot.spread else { return Some(Err("parent spreads don't turn".into())) };
+            let designz_doc::SpreadRef::Doc(si) = slot.spread else { return Some(Err("parent spreads don't turn".into())) };
             let r = app.run("layout.rotateSpreadView", json!({"spread": si, "angle": angle}));
             if let Some(rect) = app.canvas_rect {
                 crate::canvas::fit(app, rect, "spread");
@@ -1222,12 +1222,12 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
         }
         "view.proofSetup" => {
             if let Some(t) = p.get("target").and_then(Value::as_str) {
-                let Some(t) = designcraft_color::cms::ProofTarget::parse(t) else { return Some(Err(format!("unknown proof target `{t}`"))) };
+                let Some(t) = designz_color::cms::ProofTarget::parse(t) else { return Some(Err(format!("unknown proof target `{t}`"))) };
                 app.ui.proof_setup.target = t;
                 app.ui.proof_colors = true;
             }
             if let Some(i) = p.get("intent").and_then(Value::as_str) {
-                let Some(i) = designcraft_color::cms::Intent::parse(i) else { return Some(Err(format!("unknown intent `{i}`"))) };
+                let Some(i) = designz_color::cms::Intent::parse(i) else { return Some(Err(format!("unknown intent `{i}`"))) };
                 app.ui.proof_setup.intent = i;
             }
             match p.get("simulatePaper") {
@@ -1281,7 +1281,7 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
         }
         "window.setShortcut" => {
             let Some(cmd) = p.get("id").and_then(Value::as_str) else { return Some(Err("missing id".into())) };
-            if designcraft_engine::find_command(cmd).is_none() && ui_label(cmd).is_none() {
+            if designz_engine::find_command(cmd).is_none() && ui_label(cmd).is_none() {
                 return Some(Err(format!("unknown command `{cmd}`")));
             }
             match p.get("shortcut") {
@@ -1417,14 +1417,14 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
         }
         "help.app" => match p.get("app").and_then(Value::as_str) {
             Some(slug) if !slug.is_empty() && slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') => {
-                let url = format!("{}/apps/{slug}", designcraft_engine::links::WEBSITE);
+                let url = format!("{}/apps/{slug}", designz_engine::links::WEBSITE);
                 app.ui.pending_urls.push(url.clone());
                 Ok(json!({"url": url}))
             }
             _ => Err("help.app: give `app` (e.g. \"photocraft\")".into()),
         },
-        h if h.starts_with("help.") && designcraft_engine::links::get(&h[5..]).is_some() => {
-            let url = designcraft_engine::links::get(&h[5..]).unwrap_or_default().to_string();
+        h if h.starts_with("help.") && designz_engine::links::get(&h[5..]).is_some() => {
+            let url = designz_engine::links::get(&h[5..]).unwrap_or_default().to_string();
             app.ui.pending_urls.push(url.clone());
             Ok(json!({"url": url}))
         }
@@ -1526,9 +1526,9 @@ pub fn run_ui(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value, 
 
 /// Save by handing the serialized document to the host as a download (web).
 fn download_document(app: &mut DesignApp) -> Result<Value, String> {
-    let name = app.session.active().map(|d| format!("{}.designcraft", d.doc.title)).ok_or("no document")?;
+    let name = app.session.active().map(|d| format!("{}.designz", d.doc.title)).ok_or("no document")?;
     let ser = app.run("file.serialize", json!({}))?;
-    let bytes = designcraft_engine::cmd::base64_decode(ser["base64"].as_str().unwrap_or_default());
+    let bytes = designz_engine::cmd::base64_decode(ser["base64"].as_str().unwrap_or_default());
     if let Some(download) = app.services.download.as_mut() {
         download(&name, &bytes);
     }
@@ -1540,7 +1540,7 @@ fn export_png(app: &mut DesignApp, p: &Value) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document")?;
     let page = crate::control::page_index(p, crate::canvas::current_page(app).unwrap_or(0), st.doc.page_count())?;
     let scale = p.get("scale").and_then(Value::as_f64).unwrap_or(2.0);
-    let mut r = designcraft_render::Renderer::new();
+    let mut r = designz_render::Renderer::new();
     let img = r
         .render_page(
             &st.doc,
@@ -1548,7 +1548,7 @@ fn export_png(app: &mut DesignApp, p: &Value) -> Result<Value, String> {
             page,
             scale,
             false,
-            &designcraft_render::RenderOptions { printing_only: true, rich_black: app.session.prefs.rich_black_output, ..Default::default() },
+            &designz_render::RenderOptions { printing_only: true, rich_black: app.session.prefs.rich_black_output, ..Default::default() },
         )
         .ok_or("no such page")?;
     let png = img.to_png();
@@ -1579,7 +1579,7 @@ fn export_idml(app: &mut DesignApp, p: &Value) -> Result<Value, String> {
     };
     let Some(path) = path else { return Ok(Value::Null) };
     let r = app.run("file.exportIdml", json!({}))?;
-    let bytes = designcraft_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default());
+    let bytes = designz_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default());
     match app.services.write.as_mut() {
         Some(w) => w(&path, &bytes).map(|_| json!({"path": path, "bytes": bytes.len()})),
         None => Err("no writer".into()),
@@ -1606,7 +1606,7 @@ fn export_bytes(app: &mut DesignApp, p: &Value, ext: &str, cmd: &str) -> Result<
     let r = app.run(cmd, params)?;
     let bytes = match r["text"].as_str() {
         Some(t) => t.as_bytes().to_vec(),
-        None => designcraft_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default()),
+        None => designz_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default()),
     };
     match app.services.write.as_mut() {
         Some(w) => w(&path, &bytes).map(|_| json!({"path": path, "bytes": bytes.len()})),
@@ -1636,7 +1636,7 @@ pub(crate) fn export_pdf(app: &mut DesignApp, p: &Value) -> Result<Value, String
         }
     }
     let r = app.run("file.exportPdf", params)?;
-    let bytes = designcraft_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default());
+    let bytes = designz_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default());
     match app.services.write.as_mut() {
         Some(w) => w(&path, &bytes).map(|_| json!({"path": path, "bytes": bytes.len(), "pages": r["pages"], "warnings": r["warnings"]})),
         None => Err("no writer".into()),
@@ -1645,7 +1645,7 @@ pub(crate) fn export_pdf(app: &mut DesignApp, p: &Value) -> Result<Value, String
 
 /// Is a command enabled (for menu greying)?
 pub fn enabled(app: &DesignApp, id: &str) -> bool {
-    match designcraft_engine::find_command(id) {
+    match designz_engine::find_command(id) {
         Some(c) => (c.enabled)(&app.session).is_ok(),
         None => true,
     }
@@ -1653,7 +1653,7 @@ pub fn enabled(app: &DesignApp, id: &str) -> bool {
 
 /// The default shortcut of a command.
 pub fn default_shortcut(id: &str) -> Option<&'static str> {
-    designcraft_engine::find_command(id).and_then(|c| c.shortcut).or_else(|| ui_label(id).and_then(|(_, s)| s))
+    designz_engine::find_command(id).and_then(|c| c.shortcut).or_else(|| ui_label(id).and_then(|(_, s)| s))
 }
 
 /// The shortcut in effect for a command (the user's, else the default).
@@ -1671,7 +1671,7 @@ pub fn effective_shortcuts(app: &DesignApp) -> Vec<(String, String)> {
     UI_COMMANDS
         .iter()
         .map(|c| c.0)
-        .chain(designcraft_engine::command_specs().iter().map(|c| c.id))
+        .chain(designz_engine::command_specs().iter().map(|c| c.id))
         .filter_map(|id| shortcut_of(app, id).map(|s| (id.to_string(), s)))
         .collect()
 }
@@ -1722,7 +1722,7 @@ pub enum Item {
 fn cmd_item(id: &str, params: Value) -> Item {
     let (label, shortcut) = match ui_label(id) {
         Some((l, sc)) => (l.to_string(), sc),
-        None => match designcraft_engine::find_command(id) {
+        None => match designz_engine::find_command(id) {
             Some(c) => (c.label.to_string(), c.shortcut),
             None => (id.to_string(), None),
         },
@@ -1805,9 +1805,9 @@ pub fn checked(app: &DesignApp, id: &str, params: &Value) -> Option<bool> {
         "view.rulers" => app.ui.rulers,
         "view.frameEdges" => app.ui.frame_edges,
         "view.overprintPreview" => app.ui.overprint_preview,
-        "view.fastDisplay" => app.ui.display_quality == designcraft_render::DisplayQuality::Fast,
-        "view.typicalDisplay" => app.ui.display_quality == designcraft_render::DisplayQuality::Typical,
-        "view.highQualityDisplay" => app.ui.display_quality == designcraft_render::DisplayQuality::High,
+        "view.fastDisplay" => app.ui.display_quality == designz_render::DisplayQuality::Fast,
+        "view.typicalDisplay" => app.ui.display_quality == designz_render::DisplayQuality::Typical,
+        "view.highQualityDisplay" => app.ui.display_quality == designz_render::DisplayQuality::High,
         "view.guides" => app.ui.guides,
         "view.snapToGuides" => app.ui.snap_to_guides,
         "view.snapToDocumentGrid" => app.ui.snap_to_document_grid,
@@ -1922,7 +1922,7 @@ pub fn activate(app: &mut DesignApp, id: &str, params: &Value) {
     }
     if params.is_null()
         && ui_label(id).is_none()
-        && let Some(c) = designcraft_engine::find_command(id)
+        && let Some(c) = designz_engine::find_command(id)
         && !crate::dialogs::command_fields(c.params).is_empty()
         && (c.label.ends_with('…') || crate::dialogs::command_fields(c.params).iter().any(|f| !f.optional))
     {
@@ -2216,9 +2216,9 @@ pub fn shortcuts(app: &mut DesignApp, ctx: &egui::Context) {
         if !typing && !modifiers.command && !modifiers.alt {
             let name = key.name();
             let sc = if modifiers.shift { format!("Shift+{name}") } else { name.to_string() };
-            if let Some(tool) = designcraft_tools::tool_for_shortcut(&sc) {
+            if let Some(tool) = designz_tools::tool_for_shortcut(&sc) {
                 log::debug!("tool shortcut {sc} -> {tool}");
-                if std::env::var_os("DESIGNCRAFT_DEBUG_KEYS").is_some() {
+                if std::env::var_os("DESIGNZ_DEBUG_KEYS").is_some() {
                     eprintln!("tool shortcut {sc} ({key:?}, {modifiers:?}) -> {tool}");
                 }
                 app.select_tool(tool);
@@ -2291,7 +2291,7 @@ pub struct QuickItem {
 }
 
 /// Quick Apply matches (styles first, as InDesign lists them), at most 14.
-pub fn quick_apply_items(session: &designcraft_engine::Session, query: &str) -> Vec<QuickItem> {
+pub fn quick_apply_items(session: &designz_engine::Session, query: &str) -> Vec<QuickItem> {
     let ql = query.to_lowercase();
     let hit = |label: &str, id: &str| ql.is_empty() || label.to_lowercase().contains(&ql) || id.to_lowercase().contains(&ql);
     let mut out = Vec::new();
@@ -2317,7 +2317,7 @@ pub fn quick_apply_items(session: &designcraft_engine::Session, query: &str) -> 
     if ql.is_empty() {
         out.clear();
     }
-    let commands = designcraft_engine::command_specs()
+    let commands = designz_engine::command_specs()
         .iter()
         .filter(|c| !c.menu.is_empty() || c.shortcut.is_some())
         .map(|c| (c.id, c.label, c.shortcut))
@@ -2380,7 +2380,7 @@ mod tests {
 
     #[test]
     fn screen_mode_shows_the_current_mode_and_view_submenus_are_translated() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         let mode = |app: &DesignApp, m: &str| checked(app, "view.screenMode", &json!({ "mode": m }));
         assert_eq!((mode(&app, "normal"), mode(&app, "preview")), (Some(true), Some(false)));
         app.ui.screen_mode = crate::ScreenMode::Preview;
@@ -2404,7 +2404,7 @@ mod tests {
     /// Exercise the real dropdown, including clipping and wheel input, on a short viewport.
     #[test]
     fn oversized_edit_menu_scrolls_to_preferences() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(700.0, 260.0));
         let mut tick = 0;
@@ -2494,7 +2494,7 @@ mod tests {
 
     #[test]
     fn formatting_affects_text_sends_swatches_to_the_text() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         for (name, color) in [("Cyan", "#00ffff"), ("Magenta", "#ff00ff")] {
             let created = app.run("swatch.create", json!({"name": name, "color": color})).unwrap();
@@ -2504,10 +2504,10 @@ mod tests {
         let (fid, sid) = (r["id"].as_u64().unwrap(), r["story"].as_u64().unwrap());
         app.run("selection.set", json!({"ids": [fid]})).unwrap();
         let text_fill = |app: &crate::DesignApp| {
-            let st = app.session.active().unwrap().doc.story(designcraft_doc::StoryId(sid)).unwrap().clone();
+            let st = app.session.active().unwrap().doc.story(designz_doc::StoryId(sid)).unwrap().clone();
             st.char_format_at(2).over.fill.clone()
         };
-        let frame_fill = |app: &crate::DesignApp| app.session.active().unwrap().doc.item(designcraft_doc::ItemId(fid)).unwrap().fill.swatch.clone();
+        let frame_fill = |app: &crate::DesignApp| app.session.active().unwrap().doc.item(designz_doc::ItemId(fid)).unwrap().fill.swatch.clone();
         assert!(!crate::panels::colors_affect_text(&app));
         crate::panels::apply_swatch(&mut app, false, "Cyan", None).unwrap();
         assert_eq!(frame_fill(&app), "Cyan");
@@ -2524,7 +2524,7 @@ mod tests {
     #[test]
     fn transform_menu_items_open_their_dialogs() {
         for id in ["transform.move", "transform.scale", "transform.rotate", "transform.shear"] {
-            let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
             activate(&mut app, id, &Value::Null);
             let dialog = app.ui.dialog.as_ref().map(|d| d.id.clone());
             assert_eq!(dialog.as_deref(), Some(format!("cmd:{id}").as_str()), "{id} opens its dialog");
@@ -2534,18 +2534,18 @@ mod tests {
     #[test]
     fn pdf_export_menu_item_opens_the_dialog_or_exports() {
         // No params: the menu item opens the options dialog.
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         activate(&mut app, "app.exportPdf", &Value::Null);
         assert_eq!(app.ui.dialog.as_ref().map(|d| d.id.as_str()), Some("pdfExport"));
         // Explicit options: programmatic callers still export directly, opening no dialog.
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         activate(&mut app, "app.exportPdf", &json!({"path": "/tmp/x.pdf"}));
         assert!(app.ui.dialog.is_none());
     }
 
     #[test]
     fn snap_preferences_are_a_command() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         let r = run_ui(&mut app, "view.snapPreferences", &json!({"smartSpacing": false, "zone": 8})).unwrap().unwrap();
         assert_eq!(r["smartSpacing"], false);
         assert_eq!(r["alignEdges"], true, "unnamed switches keep their value");
@@ -2557,7 +2557,7 @@ mod tests {
 
     #[test]
     fn custom_shortcuts_override_defaults() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         assert_eq!(shortcut_of(&app, "app.preferences").as_deref(), Some("Cmd+K"));
         let r = run_ui(&mut app, "window.setShortcut", &json!({"id": "app.preferences", "shortcut": "Cmd+Alt+Shift+9"})).unwrap().unwrap();
         assert_eq!(r["shortcut"], "Cmd+Alt+Shift+9");
@@ -2584,7 +2584,7 @@ mod tests {
 
     #[test]
     fn split_window_panes_have_their_own_views() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp| {
@@ -2620,7 +2620,7 @@ mod tests {
     #[test]
     fn split_window_dispatches_text_once_to_the_shared_document() {
         for focus_pane in [0, 1] {
-            let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({})).unwrap();
             let made = app.run("frame.create", json!({"rect": [36, 36, 300, 200], "content": "text"})).unwrap();
             let story = made["story"].as_u64().unwrap();
@@ -2673,7 +2673,7 @@ mod tests {
 
     #[test]
     fn split_window_click_focus_routes_menu_zoom_but_hover_scroll_stays_local() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("window.split", json!({"on": true})).unwrap();
         let ctx = egui::Context::default();
@@ -2752,7 +2752,7 @@ mod tests {
             }
         }
 
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         for rect in [[36, 36, 280, 180], [300, 36, 550, 180]] {
             app.run("frame.create", json!({"rect": rect, "content": "unassigned"})).unwrap();
@@ -2783,7 +2783,7 @@ mod tests {
 
     #[test]
     fn interface_language_switches_and_validates() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         run_ui(&mut app, "app.language", &json!({"lang": "de"})).unwrap().unwrap();
         assert_eq!(app.ui.language, "de");
         assert_eq!(checked(&app, "app.language", &json!({"lang": "de"})), Some(true));
@@ -2833,7 +2833,7 @@ mod tests {
 
     #[test]
     fn ukrainian_language_is_selectable_persisted_and_keeps_document_data() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 4, "facingPages": true})).unwrap();
         app.run("frame.create", json!({"rect": [36, 36, 200, 200], "content": "text", "text": "My words · Мої слова"})).unwrap();
         let before = serde_json::to_value(&app.session.doc().unwrap().doc).unwrap();
@@ -2857,7 +2857,7 @@ mod tests {
 
     #[test]
     fn arabic_dialog_and_language_switch_keep_finite_widget_geometry() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp| {
             for _ in 0..4 {
@@ -2890,7 +2890,7 @@ mod tests {
 
     #[test]
     fn story_direction_is_checked() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         app.session.execute("frame.create", &json!({"rect": [72, 72, 200, 400], "content": "text", "text": "縦", "vertical": true})).unwrap();
         assert_eq!(checked(&app, "type.storyDirection", &json!({"vertical": true})), Some(true));
@@ -2899,7 +2899,7 @@ mod tests {
 
     #[test]
     fn proof_setup_and_colors() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         assert_eq!(checked(&app, "view.proofColors", &Value::Null), Some(false));
         let r = run_ui(&mut app, "view.proofSetup", &json!({"target": "deuteranopia"})).unwrap().unwrap();
         assert_eq!(r["on"], true);
@@ -2913,7 +2913,7 @@ mod tests {
 
     #[test]
     fn tab_hides_panels_and_documents_cycle() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         assert_eq!(shortcut_of(&app, "window.hidePanels").as_deref(), Some("Tab"));
         run_ui(&mut app, "window.hidePanels", &json!({})).unwrap().unwrap();
         assert_eq!(app.ui.hidden_panels, 1);
@@ -2933,7 +2933,7 @@ mod tests {
 
     #[test]
     fn rotate_spread_view() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({"pages": 3})).unwrap();
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp| {
@@ -2953,7 +2953,7 @@ mod tests {
         let d = app.session.active().unwrap().doc.clone();
         let turned: Vec<usize> = d.spreads.iter().enumerate().filter(|(_, sp)| sp.pages[0].view_rotation == 1).map(|(i, _)| i).collect();
         assert_eq!(turned.len(), 1);
-        let layout = designcraft_tools::CanvasLayout::new(&d, false);
+        let layout = designz_tools::CanvasLayout::new(&d, false);
         let slot = layout.slots[turned[0]];
         let b = d.spreads[turned[0]].bounds();
         assert!((slot.bounds.width() - b.height()).abs() < 1e-6 && (slot.bounds.height() - b.width()).abs() < 1e-6);
@@ -2965,7 +2965,7 @@ mod tests {
 
     #[test]
     fn hand_tool_hold_starts_power_zoom() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp, t: f64, events: Vec<egui::Event>| {
@@ -3008,7 +3008,7 @@ mod tests {
 
     #[test]
     fn middle_drag_pans_with_any_tool() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp, events: Vec<egui::Event>| {
@@ -3047,7 +3047,7 @@ mod tests {
     fn tool_shortcuts_work_after_drawing_on_the_canvas() {
         // Clicking the canvas gives it keyboard focus; single-key tool shortcuts must still switch
         // tools without pressing Esc first (#1).
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp, events: Vec<egui::Event>| {
@@ -3096,7 +3096,7 @@ mod tests {
 
     #[test]
     fn the_quick_apply_shortcut_opens_it_without_running_an_entry() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp, events: Vec<egui::Event>| {
@@ -3135,7 +3135,7 @@ mod tests {
 
     #[test]
     fn quick_apply_rows_are_left_aligned() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         app.ui.palette = Some(String::new());
         let ctx = egui::Context::default();
@@ -3170,7 +3170,7 @@ mod tests {
     fn copy_and_paste_keys_work_for_objects_without_a_native_menu() {
         // Without a native menu the paste key arrives only as a paste event, which needs text on
         // the system clipboard (#164, #185).
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp, events: Vec<egui::Event>| {
@@ -3211,9 +3211,9 @@ mod tests {
         frame(&mut app, vec![egui::Event::Paste(copied.clone())]);
         // Shift pastes without formatting.
         frame(&mut app, vec![egui::Event::ModifiersChanged(egui::Modifiers::SHIFT), egui::Event::Paste(copied)]);
-        let text = app.session.active().unwrap().doc.story(designcraft_doc::StoryId(story)).unwrap().text.clone();
+        let text = app.session.active().unwrap().doc.story(designz_doc::StoryId(story)).unwrap().text.clone();
         assert!(text.starts_with("Hello") && !text.contains('\u{FFFC}'), "{text:?}");
-        assert!(text.contains(designcraft_doc::OBJECT_MARK), "{text:?}");
+        assert!(text.contains(designz_doc::OBJECT_MARK), "{text:?}");
     }
 
     #[test]
@@ -3227,7 +3227,7 @@ mod tests {
             Some(d.doc.story(it.text_frame()?.story)?.text.clone())
         };
         let ctx = egui::Context::default();
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         native_frame(&mut app, &ctx, vec![], None);
         native_frame(&mut app, &ctx, vec![], None);
@@ -3254,7 +3254,7 @@ mod tests {
         let clip = std::rc::Rc::new(std::cell::RefCell::new(Some("Menu text".to_string())));
         let read = clip.clone();
         let services = crate::Services { clipboard_text: Some(Box::new(move || read.borrow().clone())), ..Default::default() };
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), services);
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), services);
         app.native_menu = true;
         app.session.execute("file.new", &json!({})).unwrap();
         native_frame(&mut app, &ctx, vec![], None);
@@ -3279,7 +3279,7 @@ mod tests {
 
     #[test]
     fn sample_scripts_run() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         for (name, text) in app.ui.scripts.clone() {
             let r = app.session.execute("script.run", &json!({"text": text}));
@@ -3289,7 +3289,7 @@ mod tests {
 
     #[test]
     fn new_window_shows_a_second_view() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let ctx = egui::Context::default();
         let frame = |app: &mut crate::DesignApp| {
@@ -3318,7 +3318,7 @@ mod tests {
 
     #[test]
     fn panels_float_and_dock() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         let r = run_ui(&mut app, "window.floatPanel", &json!({"panel": "swatches", "x": 50, "y": 60})).unwrap().unwrap();
         assert_eq!(r["floating"], json!(["swatches"]));
         assert_eq!(app.ui.floating[0].1, [50.0, 60.0]);
@@ -3355,7 +3355,7 @@ mod tests {
     /// A document with two frames, nothing selected, and Quick Apply's search field focused
     /// holding `text`.
     fn app_with_focused_field(ctx: &egui::Context, text: &str) -> crate::DesignApp {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         app.session.execute("frame.create", &json!({"rect": [36, 36, 200, 200]})).unwrap();
         app.session.execute("frame.create", &json!({"rect": [236, 36, 400, 200]})).unwrap();
@@ -3455,7 +3455,7 @@ mod tests {
 
     #[test]
     fn quick_apply_lists_styles_then_commands() {
-        let mut s = designcraft_engine::Session::new();
+        let mut s = designz_engine::Session::new();
         s.execute("file.new", &json!({})).unwrap();
         s.execute("style.paragraph.create", &json!({"name": "Body Copy"})).unwrap();
         let items = quick_apply_items(&s, "body");
@@ -3468,7 +3468,7 @@ mod tests {
 
     #[test]
     fn distribute_rows_menu_dispatches_an_undoable_edit() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let frame = app.run("frame.create", json!({"rect": [72, 72, 500, 700], "content": "text", "text": ""})).unwrap();
         app.run("text.select", json!({"story": frame["story"], "anchor": 0, "focus": 0})).unwrap();
@@ -3494,7 +3494,7 @@ mod tests {
         assert!(all.len() > 80, "{}", all.len());
         assert!(all.iter().any(|(label, id, _)| label == "Distribute Rows Evenly" && id == "table.distributeRows"));
         for (label, id, params) in &all {
-            assert!(ui_label(id).is_some() || designcraft_engine::find_command(id).is_some(), "menu entry {label}: unknown command {id}");
+            assert!(ui_label(id).is_some() || designz_engine::find_command(id).is_some(), "menu entry {label}: unknown command {id}");
             assert!(!label.is_empty() && label != id, "menu entry {id} has no label");
             if let Some(o) = params.as_object() {
                 assert!(!o.is_empty(), "{id}: empty fixed params");
@@ -3513,7 +3513,7 @@ mod tests {
 
     #[test]
     fn custom_workspaces_save_apply_and_delete() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.ui.dock_tab = "swatches".into();
         app.ui.control_bar = true;
         run_ui(&mut app, "window.newWorkspace", &json!({"name": "Mine"})).unwrap().unwrap();
@@ -3531,7 +3531,7 @@ mod tests {
 
     #[test]
     fn interactive_workspaces_show_their_panels() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         app.ui.dock_expanded = false;
         run_ui(&mut app, "window.workspace", &json!({"name": "Interactive for PDF"})).unwrap().unwrap();
         assert_eq!((app.ui.dock_tab.as_str(), app.ui.dock_expanded, app.ui.open_panel.as_deref()), ("pages", true, Some("buttons")));
@@ -3543,7 +3543,7 @@ mod tests {
 
     #[test]
     fn hide_and_show_menu_items() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         let items = all_menu_items();
         let (menu, label) = items.iter().find(|(m, _)| m == "Edit").cloned().expect("Edit items");
         let key = menu_key(&menu, &label);
@@ -3692,7 +3692,7 @@ mod tests {
 
     #[test]
     fn clipped_submenu_does_not_open_when_hovering_outside_menu() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(designz_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1000.0, 900.0));
         let entries = vec![Item::Sub("Hidden submenu".into(), vec![cmd_item("app.preferences", Value::Null)])];
