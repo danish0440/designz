@@ -12,7 +12,9 @@ workspace = true
 designz-geom = { workspace = true }
 designz-color = { workspace = true }
 designz-doc = { workspace = true }
+designz-images = { workspace = true }
 thiserror = { workspace = true }
+log = { workspace = true }
 quick-xml = { workspace = true }
 zip = { workspace = true }
 

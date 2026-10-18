@@ -14,7 +14,7 @@ designz-color = { workspace = true }
 designz-doc = { workspace = true }
 designz-fonts = { workspace = true }
 designz-compose = { workspace = true }
-krilla = { workspace = true }
+craft-pdf = { workspace = true, features = ["write-pdf"] }
 krilla-svg = { workspace = true }
 designz-images = { workspace = true }
 image = { workspace = true }

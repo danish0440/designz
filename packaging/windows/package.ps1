@@ -5,7 +5,7 @@
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
     designz-<version>-windows-<arch>.msi            per-machine installer (WiX v5)
-    designz-<version>-windows-<arch>-portable.zip   designz.exe + designz-cli.exe
+    designz-<version>-windows-<arch>-portable.zip   designz.exe + designz-cli.exe + portable.txt
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
   zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
@@ -93,7 +93,7 @@ Copy-Item (Join-Path $Bin 'designz.exe'), (Join-Path $Bin 'designz-cli.exe') $St
 # ---- MSI ---------------------------------------------------------------------------------------
 $Msi = Join-Path $Dist "designz-$Version-windows-$Arch.msi"
 Invoke-Native 'wix build' {
-  wix build (Join-Path $PSScriptRoot 'designz.wxs') -arch $Arch `
+  wix build (Join-Path $PSScriptRoot 'designz.wxs') (Join-Path $PSScriptRoot 'installer-ui.wxs') -arch $Arch `
     -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\designz.ico')" `
     -o $Msi
 }
@@ -106,6 +106,12 @@ $Portable = Join-Path $TargetDir "windows-package\designz-$Version-windows-$Arch
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
+# The marker that makes DesignZ keep its data in .\DesignZData next to the exe instead of
+# %APPDATA% (#574; see apps/designz/src/profile.rs).
+Set-Content -Encoding ascii -Path (Join-Path $Portable 'portable.txt') -Value @(
+  'DesignZ portable: preferences, logs and crash recovery are kept in the DesignZData folder',
+  'next to designz.exe. Delete this file to use %APPDATA%\DesignZ instead.'
+)
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE', 'NOTICE') {
   $p = Join-Path $Root $f
   if (Test-Path $p) { Copy-Item $p $Portable }

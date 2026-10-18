@@ -1,0 +1,25 @@
+[package]
+name = "designz-pptx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "DesignZ PowerPoint (PPTX) export: pages as slides of editable shapes, pictures and text"
+
+[lints]
+workspace = true
+
+[dependencies]
+designz-geom = { workspace = true }
+designz-color = { workspace = true }
+designz-doc = { workspace = true }
+designz-fonts = { workspace = true }
+designz-compose = { workspace = true }
+designz-images = { workspace = true }
+skrifa = { workspace = true }
+image = { workspace = true }
+thiserror = { workspace = true }
+zip = { workspace = true }
+
+[dev-dependencies]
+designz-fonts = { workspace = true, features = ["testing"] }
+quick-xml = { workspace = true }

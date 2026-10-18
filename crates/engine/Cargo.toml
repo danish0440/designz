@@ -10,6 +10,7 @@ workspace = true
 
 [dependencies]
 craft-print = { workspace = true }
+craft-docpath = { workspace = true }
 designz-images = { workspace = true }
 designz-geom = { workspace = true }
 designz-color = { workspace = true }
@@ -19,21 +20,26 @@ designz-compose = { workspace = true }
 designz-render = { workspace = true }
 designz-format = { workspace = true }
 designz-epub = { workspace = true }
+designz-pptx = { workspace = true }
 designz-textimport = { workspace = true }
 designz-pdf = { workspace = true }
 designz-tools = { workspace = true }
 designz-idml = { workspace = true }
+indd = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
-regex = { workspace = true }
 quick-xml = { workspace = true }
 caseless = { workspace = true }
 unicode-segmentation = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+craft-atomic = { workspace = true }
 tempfile = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+same-file = { workspace = true }
 
 [dev-dependencies]
 designz-fonts = { workspace = true, features = ["testing"] }

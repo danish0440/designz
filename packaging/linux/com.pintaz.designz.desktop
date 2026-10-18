@@ -10,4 +10,5 @@ Terminal=false
 StartupNotify=true
 StartupWMClass=com.pintaz.designz
 Categories=Graphics;Publishing;
+MimeType=application/x-designz;application/vnd.adobe.indesign-idml-package;
 Keywords=layout;page;desktop publishing;dtp;magazine;book;indesign;idml;typesetting;
