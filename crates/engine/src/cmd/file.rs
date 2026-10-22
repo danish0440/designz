@@ -629,6 +629,9 @@ fn file_place(s: &mut Session, p: &Value) -> Result<Value> {
         })
         .transpose()?;
     // Image Import Options: which page of a PDF (1-based).
+    if designz_render::is_pdf(&bytes) {
+        designz_render::check_pdf_input_size(bytes.len()).map_err(|e| bad("file.place", e.to_string()))?;
+    }
     let pdf_page = match p.get("pdfPage").and_then(Value::as_u64) {
         Some(n) if designz_render::is_pdf(&bytes) => {
             let count = designz_render::pdf_page_count(&bytes).unwrap_or(1);

@@ -659,11 +659,11 @@ fn wrap_stand_in(it: &designz_doc::Item, depth: usize) -> designz_doc::Item {
 }
 
 /// A copy of `d` where placed PDFs with Object Layer Options hidden layers are 300 ppi images.
-fn rasterize_layered(d: &designz_doc::Document) -> (Option<designz_doc::Document>, usize) {
+fn rasterize_layered(d: &designz_doc::Document) -> Result<(Option<designz_doc::Document>, usize)> {
     let ids: Vec<designz_doc::ItemId> =
         d.all_items().into_iter().filter(|id| d.item(*id).is_some_and(|it| !it.pdf_hidden_layers.is_empty() && it.graphic().is_some())).collect();
     if ids.is_empty() {
-        return (None, 0);
+        return Ok((None, 0));
     }
     let mut out = d.clone();
     let mut n = 0;
@@ -678,7 +678,8 @@ fn rasterize_layered(d: &designz_doc::Document) -> (Option<designz_doc::Document
         let [l, t, r, b] = shown.unwrap_or([0.0, 0.0, 1.0, 1.0]);
         let page_side = (g.size.0 / (r - l)).max(g.size.1 / (b - t));
         let side = (page_side * 300.0 / 72.0).clamp(64.0, 8000.0) as u32;
-        let Some(png) = designz_render::pdf_page_png(&a.data, a.page as usize, side, &hidden, shown) else { continue };
+        let png = designz_render::pdf_page_png_checked(&a.data, a.page as usize, side, &hidden, shown)
+            .map_err(|e| EngineError::Other(format!("{}: {e}", a.name)))?;
         let px = designz_render::image_size(&png);
         let aid = designz_doc::AssetId(out.alloc());
         out.assets.insert(
@@ -697,7 +698,7 @@ fn rasterize_layered(d: &designz_doc::Document) -> (Option<designz_doc::Document
         }
         n += 1;
     }
-    (Some(out), n)
+    Ok((Some(out), n))
 }
 
 /// Object number of the first page of a PDF (its page tree's first kid).
@@ -724,7 +725,7 @@ fn export_pdf(s: &mut Session, p: &Value) -> Result<Value> {
     let flattened = ppi.map(|ppi| flatten(&st.doc, &s.cache, ppi));
     // Placed PDFs with hidden layers go out as images showing just their visible layers.
     let base: &designz_doc::Document = flattened.as_ref().map_or(&st.doc, |f| &f.0);
-    let (layered, layer_count) = rasterize_layered(base);
+    let (layered, layer_count) = rasterize_layered(base)?;
     let base2: &designz_doc::Document = layered.as_ref().unwrap_or(base);
     let (fx_doc, fx_count) = rasterize_effects(base2, &s.cache);
     let doc: &designz_doc::Document = fx_doc.as_ref().unwrap_or(base2);
