@@ -1,5 +1,4 @@
 //! Browser Print must reject native spooler operations without trapping the editor.
-#![cfg(target_arch = "wasm32")]
 
 use designz_engine::Session;
 use serde_json::json;

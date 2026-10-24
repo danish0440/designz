@@ -3,7 +3,7 @@
 //!
 //! Goldens live in `tests/golden/*.png` and are compared with a tolerance (antialiasing and blur
 //! rounding may differ by a few levels between SIMD levels). Regenerate them after an intended
-//! change with `DESIGNZ_BLESS=1 cargo test -p designz-render --test effects`.
+//! change with `DESIGNZ_BLESS=1 cargo test -p designz-render --test it effects::`.
 
 use designz_compose::Cache;
 use designz_doc::build::NewDocument;
