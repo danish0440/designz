@@ -46,6 +46,7 @@ modules:
     build-commands:
       - cargo --offline build --release --locked -p designz
       - install -Dm755 target/release/designz /app/bin/designz
+      - install -Dm644 NOTICE /app/share/doc/designz/NOTICE
       - install -Dm644 packaging/linux/com.pintaz.designz.desktop /app/share/applications/com.pintaz.designz.desktop
       - install -Dm644 packaging/linux/com.pintaz.designz.mime.xml /app/share/mime/packages/com.pintaz.designz.xml
       - mkdir -p /app/share/icons && cp -R assets/app-icon/hicolor /app/share/icons/
