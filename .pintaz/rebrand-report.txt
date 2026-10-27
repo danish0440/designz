@@ -1,5 +1,5 @@
 rebrand designcraft -> DesignZ
-about credit inserted in: ['crates/ui-egui/src/about.rs (fallback, after line 162)']
+about credit inserted in: ['crates/ui-egui/src/about.rs (fallback, after line 170)']
 launcher patches: []
 lines still naming ArtCraft/getartcraft/discord (non-doc): 9
 packaging/windows/installer-ui.wxs:5: Copyright (c) 2026 ArtCraft Team and the PdfCraft contributors.
@@ -9,5 +9,5 @@ crates/ui-egui/src/about.rs:2: //! ArtCraft mark, version, and community links (
 crates/ui-egui/src/about.rs:12: /// ArtCraft brand blue (from `assets/z-brand/mark.svg`).
 crates/ui-egui/src/about.rs:17: /// The ArtCraft mark outline (viewBox -10 -19.42 136.34 136.34), from `assets/z-brand/mark.svg`.
 crates/ui-egui/src/about.rs:33: /// Paint the ArtCraft mark into `rect` (square), rasterised once per size and cached.
-crates/ui-egui/src/about.rs:163: // PINTAZ-ABOUT: required credit (Apache-2.0 change notice; ArtCraft brand licence)
-crates/ui-egui/src/about.rs:165: ui.label("Based on DesignCraft by Storytold (ArtCraft), Apache-2.0. Changes by PINTAZ TECHNOLOGIES.");
+crates/ui-egui/src/about.rs:171: // PINTAZ-ABOUT: required credit (Apache-2.0 change notice; ArtCraft brand licence)
+crates/ui-egui/src/about.rs:173: ui.label("Based on DesignCraft by Storytold (ArtCraft), Apache-2.0. Changes by PINTAZ TECHNOLOGIES.");
