@@ -23,6 +23,7 @@ designz-epub = { workspace = true }
 designz-pptx = { workspace = true }
 designz-textimport = { workspace = true }
 designz-pdf = { workspace = true }
+craft-prepress = { workspace = true }
 designz-tools = { workspace = true }
 designz-idml = { workspace = true }
 indd = { workspace = true }
