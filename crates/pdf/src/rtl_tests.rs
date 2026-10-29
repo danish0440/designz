@@ -8,7 +8,7 @@ use designz_doc::{Align, Document, ParaAttrs, ParaFormat, SpreadRef, TextDirecti
 use designz_geom::Rect;
 
 use crate::tests::extract_text;
-use crate::*;
+use crate::{PdfOptions, export_pdf};
 
 const HEBREW: &str = "DC Test PDF Hebrew";
 const ARABIC: &str = "DC Test PDF Arabic";
