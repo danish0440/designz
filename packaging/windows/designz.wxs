@@ -1,27 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  DesignZ MSI (WiX Toolset v5: `dotnet tool install -g wix`). Built by package.ps1:
-
-    wix build designz.wxs installer-ui.wxs -arch x64 -d Version=1.2.3 -d BinDir=... -d IconPath=... -o out.msi
-
-  Per-machine install into Program Files, a Start Menu shortcut, `.designz` owned by
-  DesignZ, and DesignZ offered under "Open with" for IDML (without taking over the user's
-  default app for it).
--->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package
-      Name="DesignZ"
-      Manufacturer="Learning Machines LLC"
-      Version="$(var.Version)"
-      UpgradeCode="174805DE-20FB-5217-B0C4-393F30675D68"
-      Scope="perMachine"
-      Compressed="yes"
-      Language="1033">
+  <?ifndef HasCraftFontLicences ?>
+  <?define HasCraftFontLicences=0 ?>
+  <?endif?>
+  <Package Name="DesignZ" Manufacturer="Learning Machines LLC" Version="$(var.Version)" UpgradeCode="174805DE-20FB-5217-B0C4-393F30675D68" Scope="perUserOrMachine" Compressed="yes" Language="1033">
     <SummaryInformation Description="DesignZ page layout and publishing" Manufacturer="Learning Machines LLC" />
+    <?include $(sys.SOURCEFILEDIR)install-policy.wxi?>
     <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
          (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
-    <MajorUpgrade AllowSameVersionUpgrades="yes"
-        DowngradeErrorMessage="A newer version of DesignZ is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of DesignZ is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <Icon Id="DesignzIcon.ico" SourceFile="$(var.IconPath)" />
@@ -33,11 +20,16 @@
     <!-- Shared native setup UI, including install/uninstall completion. -->
 
     <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="INSTALLFOLDER" Name="DesignZ" />
+      <Directory Id="CraftSuiteFolder" Name="Upstream">
+        <Directory Id="INSTALLFOLDER" Name="DesignZ" />
+      </Directory>
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder" />
 
     <Feature Id="Main" Title="DesignZ" Level="1">
+      <?if $(var.HasCraftFontLicences) = 1 ?>
+      <ComponentGroupRef Id="CraftFontLicences" />
+      <?endif?>
       <ComponentGroupRef Id="DesignzFiles" />
       <ComponentGroupRef Id="CraftInstallerSettings" />
     </Feature>
@@ -46,12 +38,18 @@
   </Package>
 
   <Fragment>
+    <?if $(var.HasCraftFontLicences) = 1 ?>
+    <ComponentGroup Id="CraftFontLicences" Directory="INSTALLFOLDER">
+      <Files Include="$(var.DocsDir)\**" />
+    </ComponentGroup>
+    <?endif?>
     <ComponentGroup Id="DesignzFiles" Directory="INSTALLFOLDER">
+      <Component Id="DesignzNotice">
+        <File Id="DesignzNoticeFile" Source="$(var.BinDir)\NOTICE" KeyPath="yes" />
+      </Component>
       <Component Id="DesignzApp" Guid="16B816AE-B265-52A6-87AE-9BE6D3D57F58">
         <File Id="DesignzExe" Source="$(var.BinDir)\designz.exe" KeyPath="yes">
-          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="DesignZ"
-              Description="DesignZ page layout and publishing" WorkingDirectory="INSTALLFOLDER" Advertise="yes"
-              Icon="DesignzIcon.ico" IconIndex="0" />
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="DesignZ" Description="DesignZ page layout and publishing" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="DesignzIcon.ico" IconIndex="0" />
         </File>
 
         <!-- .designz: DesignZ's own format; DesignZ is its default app. -->
@@ -62,15 +60,16 @@
         </ProgId>
         <!-- IDML: offered under "Open with", never forced as the default. -->
         <ProgId Id="Designz.Idml" Description="IDML Document" Icon="DesignzExe" IconIndex="0" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\Designz.Idml\shell\open\command" Value="&quot;[#DesignzExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\.idml\OpenWithProgids" Name="Designz.Idml" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Designz.Idml\shell\open\command" Value="&quot;[#DesignzExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.idml\OpenWithProgids" Name="Designz.Idml" Value="" Type="string" />
 
         <!-- "Open with" app list and the Run dialog (Win+R "designz"). -->
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\designz.exe" Name="FriendlyAppName" Value="DesignZ" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\designz.exe\shell\open\command" Value="&quot;[#DesignzExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\designz.exe\SupportedTypes" Name=".designz" Value="" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\designz.exe\SupportedTypes" Name=".idml" Value="" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\designz.exe" Value="[#DesignzExe]" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\designz.exe" Name="FriendlyAppName" Value="DesignZ" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\designz.exe\shell\open\command" Value="&quot;[#DesignzExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\designz.exe\SupportedTypes" Name=".designz" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\designz.exe\SupportedTypes" Name=".idml" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\designz.exe" Value="[#DesignzExe]" Type="string" />
+      <RegistryValue Root="HKMU" Key="Software\DesignZ" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
       </Component>
 
       <Component Id="DesignzCli">
