@@ -28,6 +28,9 @@ pub(crate) struct CachedView {
     stats: crate::FrameStats,
     threads: u16,
 }
+/// Rounds [`transparent_area`](Renderer::transparent_area) grows the blend area by joining touching objects.
+const MAX_AREA_ROUNDS: usize = 64;
+
 impl CachedView {
     pub(crate) const MAX_BYTES: usize = 64 << 20;
     #[allow(clippy::too_many_arguments)]
@@ -87,6 +90,7 @@ fn same_document(old: &Document, new: &Document) -> bool {
         styles,
         assets,
         title,
+        file_info,
         settings,
         layers,
         swatches,
@@ -125,6 +129,7 @@ fn same_document(old: &Document, new: &Document) -> bool {
         && old.assets.len() == assets.len()
         && old.assets.iter().zip(assets).all(|((a, x), (b, y))| a == b && std::sync::Arc::ptr_eq(x, y))
         && old.title == *title
+        && old.file_info == *file_info
         && old.settings == *settings
         && old.layers == *layers
         && old.swatches == *swatches
@@ -240,7 +245,7 @@ fn srgb_table() -> std::sync::Arc<Vec<[f32; 3]>> {
     type Lut = (designz_color::cms::ColorSettings, std::sync::Arc<Vec<[f32; 3]>>);
     static LUT: std::sync::Mutex<Option<Lut>> = std::sync::Mutex::new(None);
     let settings = designz_color::cms::active_settings();
-    let mut g = LUT.lock().unwrap_or_else(|e| e.into_inner());
+    let mut g = LUT.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     match g.as_ref() {
         Some((s, t)) if *s == settings => t.clone(),
         _ => {
@@ -324,12 +329,19 @@ impl Renderer {
         // Objects the area touches join it whole, so none is drawn partly through the ink passes
         // and partly through the ordinary drawing (their colour conversions differ slightly).
         let Some(mut area) = area else { return Some(Rect::ZERO) };
-        for _ in 0..items.len() {
+        // A chain of overlapping objects joins one more per round (a pass over every item each), so the
+        // rounds are capped; past that the area is everything, a larger area the passes blend exactly.
+        let mut settled = false;
+        for _ in 0..MAX_AREA_ROUNDS.min(items.len()) {
             let grown = items.iter().filter(|(r, _)| r.intersect(area).area() > 0.0).fold(area, |a, (r, _)| a.union(*r));
             if grown == area {
+                settled = true;
                 break;
             }
             area = grown;
+        }
+        if !settled && items.len() > MAX_AREA_ROUNDS {
+            area = items.iter().fold(area, |a, (r, _)| a.union(*r));
         }
         Some(f.view.transform_rect_bbox(area))
     }
@@ -444,8 +456,7 @@ mod tests {
             doc,
             &Cache::new(),
             &[Placed { spread: SpreadRef::Doc(0), xf: Affine::IDENTITY }],
-            200,
-            140,
+            (200, 140),
             Affine::translate((30.0, 10.0)),
             &RenderOptions { blend_space_view: true, background: Some([180, 180, 180, 255]), ..Default::default() },
         )
@@ -587,8 +598,7 @@ mod tests {
             &doc,
             &Cache::new(),
             &[Placed { spread: SpreadRef::Doc(0), xf: Affine::IDENTITY }],
-            200,
-            140,
+            (200, 140),
             Affine::translate((30.0, 10.0)),
             &cyan,
         );
@@ -647,10 +657,11 @@ mod tests {
         renderer.threads = 0;
         let placements = [Placed { spread: SpreadRef::Doc(0), xf: Affine::IDENTITY }];
         let options = RenderOptions { paper: false, blend_space_view: true, ..Default::default() };
-        let out = renderer.render(&doc, &Cache::new(), &placements, 160, 120, Affine::IDENTITY, &options);
+        let out = renderer.render(&doc, &Cache::new(), &placements, (160, 120), Affine::IDENTITY, &options);
         assert!(out.pixel(30, 40)[3].abs_diff(64) <= 1, "half-opacity object inside a half-opacity group is quarter opaque");
-        let cmy = renderer.render(&doc, &Cache::new(), &placements, 160, 120, Affine::IDENTITY, &RenderOptions { plate: Some(4), ..options.clone() });
-        let k = renderer.render(&doc, &Cache::new(), &placements, 160, 120, Affine::IDENTITY, &RenderOptions { plate: Some(3), ..options });
+        let cmy =
+            renderer.render(&doc, &Cache::new(), &placements, (160, 120), Affine::IDENTITY, &RenderOptions { plate: Some(4), ..options.clone() });
+        let k = renderer.render(&doc, &Cache::new(), &placements, (160, 120), Affine::IDENTITY, &RenderOptions { plate: Some(3), ..options });
         for ((out, cmy), k) in out.pixels.as_chunks::<4>().0.iter().zip(cmy.pixels.as_chunks::<4>().0).zip(k.pixels.as_chunks::<4>().0) {
             assert_eq!(cmy[3], k[3], "all ink passes have the same coverage");
             assert_eq!(out[3], cmy[3], "conversion preserves coverage");
