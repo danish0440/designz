@@ -12,3 +12,4 @@ workspace = true
 designz-doc = { workspace = true }
 designz-color = { workspace = true }
 zip = { workspace = true }
+chrono = { workspace = true }

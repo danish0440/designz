@@ -3,12 +3,14 @@
 //! clipboard as SVG markup; each path becomes a DesignZ path with its fill and stroke, groups
 //! stay groups, and text comes in as outlines.
 
+use std::collections::{HashMap, HashSet};
+
 use designz_doc::{Content, Fill, Item, ItemId, Selection, Shape, Stroke, StrokeType};
 use designz_geom::{Affine, BezPath, PathData, Point, Rect};
 use designz_images::usvg;
 use serde_json::{Value, json};
 
-use super::*;
+use super::{CommandSpec, Result, Session, bad, cmd, has_doc, spread_param, str_param};
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![cmd!(
@@ -27,7 +29,7 @@ pub fn is_svg_markup(text: &str) -> bool {
     designz_images::is_svg(text.as_bytes())
 }
 
-/// Nesting deeper than this is flattened into its parent (hostile input can't exhaust the stack).
+/// Cap conversion nesting too; the shared image parser bounds XML before usvg runs.
 const MAX_DEPTH: usize = 64;
 
 /// A converted SVG node, in points.
@@ -201,16 +203,46 @@ fn bounds(art: &[Art]) -> Option<Rect> {
         .reduce(|a, b| a.union(b))
 }
 
+/// The document's RGB colour swatches by colour and its swatch names, looked up once per paste
+/// (a pasted SVG can hold tens of thousands of colours).
+struct PasteSwatches {
+    by_rgb: HashMap<[u32; 3], String>,
+    names: HashSet<String>,
+}
+
+impl PasteSwatches {
+    /// An RGB colour as a key: equal colours, equal keys (`+ 0.0` makes -0 and 0 one key).
+    fn key(r: f32, g: f32, b: f32) -> [u32; 3] {
+        [(r + 0.0).to_bits(), (g + 0.0).to_bits(), (b + 0.0).to_bits()]
+    }
+
+    fn new(d: &designz_doc::Document) -> Self {
+        use designz_color::swatch::SwatchValue;
+        let mut by_rgb = HashMap::new();
+        for w in &d.swatches {
+            if let SwatchValue::Color { color: designz_color::Color::Rgb { r, g, b }, .. } = &w.value {
+                // The first swatch of a colour is the one, as a search from the start finds it.
+                by_rgb.entry(Self::key(*r, *g, *b)).or_insert_with(|| w.name.clone());
+            }
+        }
+        Self { by_rgb, names: d.swatches.iter().map(|w| w.name.clone()).collect() }
+    }
+}
+
 /// The swatch holding exactly `rgb`: an existing process colour, else a new unnamed one (hidden
 /// from the Swatches panel until Add to Swatches), as InDesign does for pasted colours.
-fn swatch_for(d: &mut designz_doc::Document, rgb: [u8; 3]) -> String {
+fn swatch_for(d: &mut designz_doc::Document, known: &mut PasteSwatches, rgb: [u8; 3]) -> String {
     use designz_color::swatch::{Swatch, SwatchValue};
     let color = designz_color::Color::rgb8(rgb[0], rgb[1], rgb[2]);
-    if let Some(w) = d.swatches.iter().find(|w| matches!(&w.value, SwatchValue::Color { color: c, .. } if *c == color)) {
-        return w.name.clone();
+    let designz_color::Color::Rgb { r, g, b } = color else { return String::new() };
+    let key = PasteSwatches::key(r, g, b);
+    if let Some(name) = known.by_rgb.get(&key) {
+        return name.clone();
     }
     let base = format!("R={} G={} B={}", rgb[0], rgb[1], rgb[2]);
-    let name = designz_doc::Styles::unique_name(|n| d.swatch(n).is_some(), &base);
+    let name = designz_doc::Styles::unique_name(|n| known.names.contains(n), &base);
+    known.names.insert(name.clone());
+    known.by_rgb.insert(key, name.clone());
     d.swatches.push(Swatch {
         name: name.clone(),
         value: SwatchValue::Color { color, color_type: designz_color::ColorType::Process },
@@ -221,7 +253,7 @@ fn swatch_for(d: &mut designz_doc::Document, rgb: [u8; 3]) -> String {
     name
 }
 
-fn build(d: &mut designz_doc::Document, art: Vec<Art>, layer: designz_doc::LayerId, shift: Affine) -> Vec<Item> {
+fn build(d: &mut designz_doc::Document, known: &mut PasteSwatches, art: Vec<Art>, layer: designz_doc::LayerId, shift: Affine) -> Vec<Item> {
     let mut out = Vec::new();
     for a in art {
         match a {
@@ -239,12 +271,12 @@ fn build(d: &mut designz_doc::Document, art: Vec<Art>, layer: designz_doc::Layer
                 let paint = fill.map(|f| f.opacity).or(stroke.as_ref().map(|(c, _)| c.opacity)).unwrap_or(1.0);
                 let mut it = Item::new(ItemId(d.alloc()), layer, if line { Shape::GraphicLine } else { Shape::Path }, data);
                 it.fill = match fill {
-                    Some(f) => Fill::swatch(&swatch_for(d, f.rgb)),
+                    Some(f) => Fill::swatch(&swatch_for(d, known, f.rgb)),
                     None => Fill::none(),
                 };
                 it.stroke = match stroke {
                     Some((c, s)) => Stroke {
-                        swatch: swatch_for(d, c.rgb),
+                        swatch: swatch_for(d, known, c.rgb),
                         weight: s.width,
                         cap: s.cap,
                         join: s.join,
@@ -258,7 +290,7 @@ fn build(d: &mut designz_doc::Document, art: Vec<Art>, layer: designz_doc::Layer
                 out.push(it);
             }
             Art::Group(items, opacity) => {
-                let children = build(d, items, layer, shift);
+                let children = build(d, known, items, layer, shift);
                 if children.is_empty() {
                     continue;
                 }
@@ -312,7 +344,8 @@ fn paste_svg(s: &mut Session, p: &Value) -> Result<Value> {
         warnings.push(format!("{} embedded image(s) left out (place images with File › Place)", notes.images));
     }
     s.edit(|d, sel| {
-        let items = build(d, art, layer, shift);
+        let mut known = PasteSwatches::new(d);
+        let items = build(d, &mut known, art, layer, shift);
         let mut ids = Vec::new();
         for it in items {
             ids.push(it.id);
@@ -426,13 +459,16 @@ mod tests {
     #[test]
     fn deeply_nested_groups_do_not_exhaust_the_stack() {
         let mut s = session();
+        let before = serde_json::to_value(&s.doc().unwrap().doc).unwrap();
+        let undo = s.doc().unwrap().history.undo.len();
         let depth = 2000;
         let svg = format!(
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">{}<rect width="10" height="10"/>{}</svg>"#,
             "<g opacity=\"0.99\">".repeat(depth),
             "</g>".repeat(depth)
         );
-        // usvg itself may refuse a document this deep; either way, no crash.
-        let _ = s.execute("edit.pasteSvg", &json!({"svg": svg}));
+        assert!(s.execute("edit.pasteSvg", &json!({"svg": svg})).is_err());
+        assert_eq!(serde_json::to_value(&s.doc().unwrap().doc).unwrap(), before);
+        assert_eq!(s.doc().unwrap().history.undo.len(), undo);
     }
 }

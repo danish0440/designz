@@ -8,6 +8,10 @@ description = "DesignZ engine: session, documents, history, selection, command r
 [lints]
 workspace = true
 
+[features]
+# Recovery-writer handshakes for other crates' tests (`designz_engine::recovery::testing`).
+testing = []
+
 [dependencies]
 craft-print = { workspace = true }
 craft-docpath = { workspace = true }
@@ -23,6 +27,7 @@ designz-epub = { workspace = true }
 designz-pptx = { workspace = true }
 designz-textimport = { workspace = true }
 designz-pdf = { workspace = true }
+craft-prepress = { workspace = true }
 designz-tools = { workspace = true }
 designz-idml = { workspace = true }
 indd = { workspace = true }
