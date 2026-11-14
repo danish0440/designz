@@ -20,6 +20,7 @@ pub mod math;
 pub mod recovery;
 pub mod sample;
 pub mod script;
+pub mod separations;
 mod tooling;
 
 use std::sync::Arc;
@@ -33,7 +34,7 @@ pub use cmd::{CommandInfo, CommandSpec, command_specs, find_command};
 pub use designz_compose as compose;
 pub use designz_doc as doc;
 pub use designz_tools as tools;
-pub use tooling::{SnapView, UiRequest, ViewInfo};
+pub use tooling::{ImeMutation, ImeTextContext, SnapView, UiRequest, ViewInfo, ime_delete_ranges};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
@@ -101,6 +102,9 @@ pub struct DocState {
     /// Editing parent spreads (Pages panel double-click on a parent).
     pub editing_parents: bool,
     pub uid: u64,
+    /// Changes whenever this document state is recreated, even if [`Self::uid`] is preserved
+    /// (File › Revert keeps the uid for recovery but replaces the document).
+    pub identity_epoch: u64,
     /// Recovery entries this state actually opened or published, for repeated-open and cleanup.
     /// Bounded, deduplicated checkpoint addresses; never inferred from uid alone.
     pub(crate) recovery_entries: Vec<(std::path::PathBuf, u64)>,
@@ -141,10 +145,14 @@ fn next_revision() -> u64 {
 }
 
 impl DocState {
-    pub fn new(doc: Document, path: Option<String>) -> Self {
-        let active_layer = doc.default_layer();
+    /// Initialize saved/live document identity, revision, epoch, active default layer, empty history with limit 1,000 and the initial path.
+    pub fn new(mut doc: Document, path: Option<String>) -> Self {
+        // Alpha Channel contour outlines aren't saved: trace them for the document as opened.
+        crate::cmd::alpha_wrap::sync(&mut doc);
+        let active_layer = doc.working_layer();
         let doc = Arc::new(doc);
         let revision = next_revision();
+        let identity_epoch = NEXT_UID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         DocState {
             saved_doc: doc.clone(),
             doc,
@@ -156,7 +164,8 @@ impl DocState {
             active_layer,
             interaction: None,
             editing_parents: false,
-            uid: NEXT_UID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            uid: identity_epoch,
+            identity_epoch,
             recovery_entries: Vec::new(),
             preview_stash: None,
             preview_record: None,
@@ -236,6 +245,8 @@ pub struct Prefs {
     pub recovery_minutes: f64,
     /// File › New › Document › Save Document Preset: saved document presets, by name (`title`).
     pub document_presets: Vec<designz_doc::build::NewDocument>,
+    /// File › Export Layouts and Versions › Save Preset: saved export jobs, by name.
+    pub export_presets: Vec<cmd::export_batch::ExportPreset>,
     /// Preferences › File Handling › Create Links When Placing Text Files: placed text files are
     /// linked (Links panel) unless `file.place` says otherwise.
     pub link_text_files: bool,
@@ -243,6 +254,61 @@ pub struct Prefs {
     pub recent_files: Vec<String>,
     /// Preferences › File Handling › Number of Recent Items to Display (0 keeps no list).
     pub recent_files_max: u32,
+    /// Preferences › Units & Increments set with no document open: what new documents start
+    /// with, as InDesign's application defaults. A document keeps its own once made.
+    pub default_units: DefaultUnits,
+}
+
+/// Units & Increments for new documents (Preferences with no document open), in the keys
+/// `document.preferences` uses.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct DefaultUnits {
+    pub horizontal_units: designz_geom::Unit,
+    pub vertical_units: designz_geom::Unit,
+    pub ruler_origin: designz_doc::RulerOrigin,
+    /// Cursor Key, in points.
+    pub keyboard_increment: f64,
+    /// Kerning/Tracking, in 1/1000 em.
+    pub kerning_increment: f64,
+}
+
+impl Default for DefaultUnits {
+    /// A new document's own settings.
+    fn default() -> Self {
+        let d = designz_doc::DocSettings::default();
+        DefaultUnits {
+            horizontal_units: designz_geom::Unit::Picas,
+            vertical_units: designz_geom::Unit::Picas,
+            ruler_origin: d.ruler_origin,
+            keyboard_increment: d.keyboard_increment,
+            kerning_increment: d.kerning_increment,
+        }
+    }
+}
+
+impl DefaultUnits {
+    /// Gives a new document these defaults. Unless it was made from a preset (whose units are its
+    /// own), its vertical ruler follows the preference while it keeps the default horizontal
+    /// units (units picked in New Document set both rulers).
+    pub fn apply(&self, settings: &mut designz_doc::DocSettings, preset: bool) {
+        if !preset && settings.horizontal_units == self.horizontal_units {
+            settings.vertical_units = self.vertical_units;
+        }
+        settings.ruler_origin = self.ruler_origin;
+        settings.keyboard_increment = self.keyboard_increment;
+        settings.kerning_increment = self.kerning_increment;
+    }
+
+    /// Refuses increments that aren't finite and positive (at most 1000).
+    pub fn check(&self) -> std::result::Result<(), String> {
+        for (name, v) in [("keyboardIncrement", self.keyboard_increment), ("kerningIncrement", self.kerning_increment)] {
+            if !(v.is_finite() && v > 0.0 && v <= 1000.0) {
+                return Err(format!("`defaultUnits.{name}` must be more than 0 and at most 1000"));
+            }
+        }
+        Ok(())
+    }
 }
 
 /// The most recent files Preferences lets File › Open Recent keep.
@@ -291,6 +357,7 @@ impl Default for Prefs {
     fn default() -> Self {
         Prefs {
             document_presets: Vec::new(),
+            export_presets: Vec::new(),
             show_hidden_characters: false,
             typographers_quotes: true,
             polygon_sides: 6,
@@ -317,6 +384,7 @@ impl Default for Prefs {
             link_text_files: false,
             recent_files: Vec::new(),
             recent_files_max: 20,
+            default_units: DefaultUnits::default(),
         }
     }
 }
@@ -326,6 +394,10 @@ pub struct Session {
     active: Option<usize>,
     /// An undoable command is running: the commands it runs are part of its undo step.
     in_undo_step: bool,
+    /// Scripts running one inside another, and the steps the outermost may still run
+    /// ([`script::MAX_SCRIPT_DEPTH`], [`script::MAX_SCRIPT_STEPS`]).
+    pub(crate) script_depth: usize,
+    pub(crate) script_steps: usize,
     pub prefs: Prefs,
     pub cache: Arc<Cache>,
     pub(crate) tool: Box<dyn designz_tools::Tool>,
@@ -342,8 +414,14 @@ pub struct Session {
     pub clipboard_origin: f64,
     /// Crash-recovery folder (the app sets it; saving or closing a document removes its entry).
     pub recovery_dir: Option<std::path::PathBuf>,
-    /// Copied text with its formatting (a frameless story slice) and its plain text.
-    pub text_clipboard: Option<(Arc<designz_doc::Story>, String)>,
+    /// This session's number for the background recovery writer, which returns each result to
+    /// the session that queued it.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    pub(crate) recovery_owner: recovery::Owner,
+    /// Copied text with its formatting (a frameless story slice), its plain text, and what pasting
+    /// it needs from its document: a copy holding only the stories its anchored text frames show
+    /// (and theirs) and the graphics the text and those stories place.
+    pub text_clipboard: Option<(Arc<designz_doc::Story>, String, Arc<designz_doc::Document>)>,
     /// Requests for the UI (dialogs, view changes) produced by tools/commands.
     pub ui_requests: Vec<UiRequest>,
     /// Graphic loaded in the place cursor.
@@ -369,9 +447,10 @@ pub struct Session {
     /// New Document's Preview: the preview document's uid and the uid of the document that was
     /// active before it (see [`Session::preview_new_document`]).
     pub(crate) new_document_preview: Option<(u64, Option<u64>)>,
-    /// Linked text files checked by the Links panel: path → the size and modification time the
-    /// file had and the hash of its contents then, so a file touched but not changed is read once.
-    pub(crate) text_link_checks: std::collections::HashMap<String, (designz_doc::Fingerprint, String)>,
+    /// Linked text files and images checked against their files this session (`links.list` is
+    /// polled): a file of the recorded size and time isn't read again, and one touched but not
+    /// changed is read once.
+    pub(crate) link_checks: cmd::LinkListChecks,
 }
 
 impl Default for Session {
@@ -392,6 +471,8 @@ impl Session {
             docs: vec![],
             active: None,
             in_undo_step: false,
+            script_depth: 0,
+            script_steps: 0,
             prefs: Prefs::default(),
             cache: Arc::new(Cache::new()),
             tool: designz_tools::create("selection"),
@@ -402,8 +483,9 @@ impl Session {
             clipboard: None,
             clipboard_origin: 0.0,
             recovery_dir: None,
+            recovery_owner: recovery::Owner::new(),
             text_clipboard: None,
-            text_link_checks: Default::default(),
+            link_checks: Default::default(),
             ui_requests: vec![],
             loaded: None,
             transforms: Default::default(),
@@ -484,11 +566,18 @@ impl Session {
             self.active = Some(i);
         }
     }
-    pub fn add_document(&mut self, d: DocState) -> usize {
+    pub fn add_document(&mut self, mut d: DocState) -> usize {
         if let Err(e) = self.end_composition() {
             log::warn!("ending the IME composition: {e}");
         }
         self.reset_find_scope();
+        // A built document (a data merge, say) may hold copies of anchored text frames.
+        if d.doc.has_anchored_items() {
+            let mut doc = (*d.doc).clone();
+            if doc.fix_anchored_text_frames() > 0 {
+                d.doc = Arc::new(doc);
+            }
+        }
         self.stop_data_preview();
         self.docs.push(d);
         self.active = Some(self.docs.len() - 1);
@@ -542,17 +631,7 @@ impl Session {
         // passes that its command's description doesn't name fails the test.
         #[cfg(test)]
         check_params(id, params)?;
-        if let Err(e) = (spec.enabled)(self) {
-            // A command that takes `ids` acts on the objects the call names, so the selection
-            // doesn't matter: with a text caret, nothing selected, or a selection the command
-            // can't act on, `{"ids": [5]}` still runs.
-            let named = if cmd::selection_reason(&e) { cmd::named_targets(spec, params) } else { None };
-            let Some(ids) = named else { return Err(EngineError::Disabled(id.into(), e)) };
-            let st = self.doc()?;
-            if let Some(gone) = ids.iter().find(|i| st.doc.item(**i).is_none()) {
-                return Err(EngineError::Disabled(id.into(), format!("no object with id {}", gone.0)));
-            }
-        }
+        self.check_enabled(spec, id, params)?;
         // Preview is temporary. Save, merge, and every other edit restore the template first.
         // Queries stay read-only so the panel can poll fields during a preview. `data.preview`
         // itself is the one command that fills the live document.
@@ -571,6 +650,7 @@ impl Session {
             Ok(r) => r,
             Err(e) => {
                 // What it did before it failed can be undone too.
+                self.keep_guide_selection_valid(before.as_ref(), id);
                 self.record_undo_step(spec, before, nested);
                 return Err(e);
             }
@@ -580,7 +660,7 @@ impl Session {
         if let Some(st) = self.active_mut()
             && st.doc.layer(st.active_layer).is_none()
         {
-            st.active_layer = st.doc.default_layer();
+            st.active_layer = st.doc.working_layer();
         }
         self.record_transform(id, params);
         if self.prefs.smart_text_reflow && spec.undoable {
@@ -597,11 +677,51 @@ impl Session {
                 st.doc = Arc::new(d);
             }
         }
-        // Auto-size frames fit the text the command changed, in the same undo step.
+        self.autosize_changed(spec, before.as_ref());
+        self.keep_guide_selection_valid(before.as_ref(), id);
+        self.record_undo_step(spec, before, nested);
+        if spec.journal {
+            self.journal.push((id.to_string(), params.clone()));
+        }
+        self.discard_stale_find_scope();
+        Ok(r)
+    }
+
+    /// Fails with `Disabled` unless the command is enabled or names objects or a table it can act on.
+    fn check_enabled(&self, spec: &CommandSpec, id: &str, params: &Value) -> Result<()> {
+        if let Err(e) = (spec.enabled)(self) {
+            // A table command that takes `story` and `table` acts on the table the call names, so
+            // the selection doesn't matter: with nothing selected, the caret outside a table, or
+            // selected rows the command can't act on, `{"table": 3}` still runs.
+            if cmd::has_doc(self).is_ok()
+                && let Some(table) = cmd::named_table(spec, params, id)?
+            {
+                let story = cmd::table_story(params, id)?;
+                let st = self.doc()?;
+                if !st.doc.stories.iter().any(|(sid, x)| story.is_none_or(|n| sid.0 == n) && x.tables.contains_key(&table)) {
+                    return Err(EngineError::Disabled(id.into(), format!("no table {table}")));
+                }
+                return Ok(());
+            }
+            // A command that takes `ids` acts on the objects the call names, so the selection
+            // doesn't matter: with a text caret, nothing selected, or a selection the command
+            // can't act on, `{"ids": [5]}` still runs.
+            let named = if cmd::selection_reason(&e) { cmd::named_targets(spec, params) } else { None };
+            let Some(ids) = named else { return Err(EngineError::Disabled(id.into(), e)) };
+            let st = self.doc()?;
+            if let Some(gone) = ids.iter().find(|i| st.doc.item(**i).is_none()) {
+                return Err(EngineError::Disabled(id.into(), format!("no object with id {}", gone.0)));
+            }
+        }
+        Ok(())
+    }
+
+    /// Auto-size frames fit the text the command changed, in the same undo step.
+    fn autosize_changed(&mut self, spec: &CommandSpec, before: Option<&(u64, Arc<Document>, Selection)>) {
         if spec.undoable
             && let Some(st) = self.active_mut()
         {
-            let prev = before.as_ref().filter(|(uid, _, _)| *uid == st.uid).map(|(_, d, _)| d.as_ref());
+            let prev = before.filter(|(uid, _, _)| *uid == st.uid).map(|(_, d, _)| d.as_ref());
             if prev.is_none_or(|p| !std::ptr::eq(p, st.doc.as_ref())) {
                 let todo = autosize::candidates(&st.doc, prev);
                 if !todo.is_empty() {
@@ -613,12 +733,15 @@ impl Session {
                 }
             }
         }
-        self.record_undo_step(spec, before, nested);
-        if spec.journal {
-            self.journal.push((id.to_string(), params.clone()));
+    }
+
+    /// Drops selected guides the command `id` made stale, against the document as it will be
+    /// recorded: after the passes that run with the command (smart reflow, live captions, autosize).
+    fn keep_guide_selection_valid(&mut self, before: Option<&(u64, Arc<Document>, Selection)>, id: &str) {
+        if let Some(st) = self.active_mut() {
+            let old = before.filter(|(uid, _, _)| *uid == st.uid).map(|(_, d, sel)| (d.as_ref(), sel));
+            cmd::guides::keep_selection_valid(st, old, id);
         }
-        self.discard_stale_find_scope();
-        Ok(r)
     }
 
     /// Record undo if the document changed (and we're not previewing an interaction), with the
@@ -714,7 +837,15 @@ impl Session {
         let r = f(&mut doc, &mut sel)?;
         crate::cmd::sync_placeholders(&mut doc);
         crate::cmd::flex::sync(&mut doc);
+        crate::cmd::alpha_wrap::sync(&mut doc);
+        // The generated endnote story first: it replaces its text, anchored frames pasted into it
+        // included.
         doc.sync_endnote_story();
+        // Text and frames copied or deleted: anchored items keep ids and stories of their own. The
+        // repair copies and removes stories with their endnotes, so the endnotes follow it.
+        if doc.anchored_items_changed_since(&st.doc) && doc.fix_anchored_text_frames() > 0 {
+            doc.sync_endnote_story();
+        }
         st.doc = Arc::new(doc);
         st.selection = sel;
         st.bump_revision();
@@ -735,19 +866,3 @@ pub(crate) use push_undo as record_undo;
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod tests_autosize;
-#[cfg(test)]
-mod tests_file_guard;
-#[cfg(test)]
-mod tests_idml;
-#[cfg(test)]
-mod tests_ime;
-#[cfg(test)]
-mod tests_linked_paths;
-#[cfg(test)]
-mod tests_params;
-#[cfg(test)]
-mod tests_roots;
-#[cfg(test)]
-mod tests_table;

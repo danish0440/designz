@@ -9,9 +9,9 @@ description = "DesignZ native file format: zip with document.json and embedded a
 workspace = true
 
 [dependencies]
+craft-designz-format = { workspace = true }
 designz-doc = { workspace = true }
-designz-images = { workspace = true }
-serde = { workspace = true }
+
+[dev-dependencies]
 serde_json = { workspace = true }
 zip = { workspace = true }
-thiserror = { workspace = true }

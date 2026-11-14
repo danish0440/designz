@@ -13,10 +13,13 @@ designz-geom = { workspace = true }
 designz-color = { workspace = true }
 designz-doc = { workspace = true }
 designz-images = { workspace = true }
+craft-idml = { workspace = true }
+craft-xml = { workspace = true }
+craft-svg = { workspace = true }
+craft-file-formats = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
-quick-xml = { workspace = true }
-zip = { workspace = true }
 
 [dev-dependencies]
 designz-compose = { workspace = true }
+zip = { workspace = true }
