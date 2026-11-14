@@ -30,6 +30,7 @@ fn place_named(d: &mut Document, data: Vec<u8>, x: f64, name: &str, mime: &str, 
     let mut item = Item::new(id, d.default_layer(), Shape::Rectangle, shapes::rectangle(Rect::new(x, 36.0, x + 20.0, 56.0)));
     item.stroke.weight = 0.0;
     item.content = Content::Graphic(Graphic {
+        layer_options: None,
         asset: aid,
         size: (20.0, 20.0),
         xf: Affine::translate((x, 36.0)),
@@ -92,7 +93,7 @@ fn drawn_content(bytes: Vec<u8>) -> (Vec<DrawnImage>, Vec<([u8; 4], kurbo::Rect)
         fn pop_clip_path(&mut self) {}
         fn pop_transparency_group(&mut self) {}
     }
-    let pdf = hayro_syntax::Pdf::new(bytes).unwrap();
+    let pdf = craft_pdf::syntax::Pdf::new(bytes).unwrap();
     let cache = InterpreterCache::new();
     let mut sink = Sink(Vec::new(), Vec::new());
     for page in pdf.pages().iter() {
@@ -181,8 +182,8 @@ struct ImageObject {
 }
 
 fn image_objects(bytes: &[u8]) -> Vec<ImageObject> {
-    use hayro_syntax::object::{Name, Stream};
-    let pdf = hayro_syntax::Pdf::new(bytes.to_vec()).unwrap();
+    use craft_pdf::syntax::object::{Name, Stream};
+    let pdf = craft_pdf::syntax::Pdf::new(bytes.to_vec()).unwrap();
     pdf.objects()
         .into_iter()
         .filter_map(|o| o.into_stream())
