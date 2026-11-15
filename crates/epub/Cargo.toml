@@ -9,6 +9,9 @@ description = "DesignZ EPUB 3 (reflowable) export: stories in reading order, CSS
 workspace = true
 
 [dependencies]
+craft-epub = { workspace = true }
 designz-doc = { workspace = true }
 designz-color = { workspace = true }
+
+[dev-dependencies]
 zip = { workspace = true }
