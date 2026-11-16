@@ -16,10 +16,14 @@ designz-fonts = { workspace = true }
 designz-compose = { workspace = true }
 designz-images = { workspace = true }
 skrifa = { workspace = true }
-image = { workspace = true }
 thiserror = { workspace = true }
-zip = { workspace = true }
+craft-opc = { workspace = true }
+craft-pptx = { workspace = true }
+craft-image-codecs = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
+zip = { workspace = true }
+image = { workspace = true, features = ["png"] }
 designz-fonts = { workspace = true, features = ["testing"] }
 quick-xml = { workspace = true }
