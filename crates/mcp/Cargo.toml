@@ -9,12 +9,14 @@ description = "DesignZ MCP server: JSON-RPC 2.0 over stdio, driving a running ap
 workspace = true
 
 [dependencies]
+craft-mcp-server = { workspace = true }
 designz-engine = { workspace = true }
 designz-render = { workspace = true }
 designz-tools = { workspace = true }
+craft-file-formats = { workspace = true }
 designz-geom = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
 
 [dev-dependencies]
-image = { workspace = true }
+image = { workspace = true, features = ["png"] }
