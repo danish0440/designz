@@ -1,0 +1,62 @@
+{
+  "id": "designz",
+  "name": "DesignZ",
+  "upgradeCode": "49E87D30-BB68-4896-AA1D-F45C833CFC3C",
+  "sources": [
+    "designz.wxs",
+    "installer-ui.wxs"
+  ],
+  "icon": "assets/app-icon/designz.ico",
+  "localization": [],
+  "extensions": [],
+  "payloads": [
+    "NOTICE",
+    "designz-cli.exe",
+    "designz.exe"
+  ],
+  "registry": [
+    [
+      "-1",
+      "Software\\Classes\\Designz.Idml\\shell\\open\\command",
+      "",
+      "\"[#DesignzExe]\" \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\.idml\\OpenWithProgids",
+      "Designz.Idml",
+      ""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\designz.exe",
+      "FriendlyAppName",
+      "DesignZ"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\designz.exe\\shell\\open\\command",
+      "",
+      "\"[#DesignzExe]\" \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\designz.exe\\SupportedTypes",
+      ".designz",
+      ""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\designz.exe\\SupportedTypes",
+      ".idml",
+      ""
+    ],
+    [
+      "-1",
+      "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\designz.exe",
+      "",
+      "[#DesignzExe]"
+    ]
+  ],
+  "mode": "dualScope"
+}
